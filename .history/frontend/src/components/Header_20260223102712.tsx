@@ -19,7 +19,7 @@ export default function Header() {
               className="h-10 w-auto object-contain group-hover:scale-105 transition-transform"
             />
             <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">NSO Info</h1>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">NSO Ing</h1>
               <p className="text-xs text-gray-500">National System Operator</p>
             </div>
           </Link>
