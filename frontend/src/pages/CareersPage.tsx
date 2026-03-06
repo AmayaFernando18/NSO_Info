@@ -65,12 +65,12 @@ export default function CareersPage() {
   return (
     <div className="min-h-screen bg-base">
       {/* Hero Section */}
-      <div className="relative h-[500px] bg-gradient-to-r from-secondary via-primary to-secondary overflow-hidden">
+      <div className="relative h-[350px] bg-gradient-to-r from-secondary via-primary to-secondary overflow-hidden">
         <div className="absolute inset-0 bg-[url('/images/team.avif')] bg-cover bg-center opacity-50"></div>
         <div className="absolute inset-0 bg-gradient-to-r from-secondary/60 to-primary/50"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Join Our Team</h1>
-          <p className="text-xl text-gray-100 max-w-2xl">
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-4">Join Our Team</h1>
+          <p className="text-base text-gray-100 max-w-2xl">
             Help shape the future of innovation while growing your career with us. Explore our current openings and find where you fit in
           </p>
           <Breadcrumb items={[{ label: 'Join Our Team' }]} />
@@ -106,7 +106,7 @@ export default function CareersPage() {
 
               return (
                 <div key={deptIndex} className="mb-10">
-                  <h2 className="text-2xl font-bold text-secondary mb-1 pb-2 border-b-2 border-primary/20">
+                  <h2 className="text-xl font-bold text-secondary mb-1 pb-2 border-b-2 border-primary/20">
                     {dept.name}
                   </h2>
                   <div className="space-y-4 mt-6">
@@ -114,7 +114,7 @@ export default function CareersPage() {
                       <Card key={job.id} hover>
                         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                           <div className="flex-1">
-                            <h3 className="text-xl font-bold text-secondary mb-2">{job.title}</h3>
+                            <h3 className="text-base font-bold text-secondary mb-2">{job.title}</h3>
                             <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-3">
                               <div className="flex items-center">
                                 <MapPin className="h-4 w-4 mr-1 text-primary" />

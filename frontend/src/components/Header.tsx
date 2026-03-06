@@ -19,28 +19,28 @@ export default function Header() {
               className="h-10 w-auto object-contain group-hover:scale-105 transition-transform"
             />
             <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">NSO Info</h1>
+              <h1 className="text-base font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">NSO Info</h1>
               <p className="text-xs text-gray-500">National System Operator</p>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
-            <Link to="/" className="text-lg text-secondary hover:text-primary transition-colors font-medium">
+            <Link to="/" className="text-base text-secondary hover:text-primary transition-colors font-medium">
               Home
             </Link>
             
-            {/* <Link to="/news" className="text-lg text-secondary hover:text-primary transition-colors font-medium">
+            {/* <Link to="/news" className="text-base text-secondary hover:text-primary transition-colors font-medium">
               News
             </Link> */}
             
-            <Link to="/careers" className="text-lg text-secondary hover:text-primary transition-colors font-medium">
+            <Link to="/careers" className="text-base text-secondary hover:text-primary transition-colors font-medium">
               Careers
             </Link>
-            <Link to="/tenders" className="text-lg text-secondary hover:text-primary transition-colors font-medium">
+            <Link to="/tenders" className="text-base text-secondary hover:text-primary transition-colors font-medium">
               Procurement
             </Link>
-            <Link to="/corporate-profile" className="text-lg text-secondary hover:text-primary transition-colors font-medium">
+            <Link to="/corporate-profile" className="text-base text-secondary hover:text-primary transition-colors font-medium">
               Corporate Profile
             </Link>
           </nav>

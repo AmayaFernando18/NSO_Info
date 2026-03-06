@@ -42,7 +42,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen">
       {/* Hero Carousel */}
-      <div className="relative h-[600px] bg-gradient-to-r from-primary via-accent to-primary overflow-hidden">
+      <div className="relative h-[450px] bg-gradient-to-r from-primary via-accent to-primary overflow-hidden">
         {mockHeroImages.map((image, index) => (
           <div
             key={image.id}
@@ -58,8 +58,8 @@ export default function HomePage() {
             <div className="absolute inset-0 bg-gradient-to-r from-secondary/90 via-primary/70 to-accent/70 flex items-center">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
                 <div className="max-w-2xl">
-                  <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">{image.title}</h1>
-                  <p className="text-xl text-gray-100">{image.description}</p>
+                  <h1 className="text-2xl md:text-3xl font-bold text-white mb-4">{image.title}</h1>
+                  <p className="text-base text-gray-100">{image.description}</p>
                 </div>
               </div>
             </div>
@@ -100,12 +100,12 @@ export default function HomePage() {
                         <Icon className="h-5 w-5 text-primary" />
                       </div>
                     </div>
-                    <h3 className="text-2xl font-bold text-secondary mb-1">{highlight.value}</h3>
+                    <h3 className="text-xl font-bold text-secondary mb-1">{highlight.value}</h3>
                     <p className="text-sm font-medium text-gray-700">{highlight.title}</p>
                     <p className="text-xs text-gray-500 mt-1">{highlight.description}</p>
                   </div>
                   {highlight.trend && (
-                    <div className={`flex items-center text-sm ${highlight.trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+                    <div className={`flex items-center text-sm ${highlight.trend === 'up' ? 'text-primary' : 'text-red-600'}`}>
                       {highlight.trend === 'up' ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                       <span className="ml-1">{highlight.trendValue}</span>
                     </div>
@@ -120,8 +120,8 @@ export default function HomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-secondary flex items-center">
-                <FileText className="h-6 w-6 text-primary mr-2" />
+              <h2 className="text-xl font-bold text-secondary flex items-center">
+                <FileText className="h-5 w-5 text-primary mr-2" />
                 Latest Updates
               </h2>
               <Link to="/news" className="text-primary hover:text-accent flex items-center text-sm font-medium">
@@ -153,8 +153,8 @@ export default function HomePage() {
           </div>
 
           <div>
-            <h2 className="text-2xl font-bold text-secondary flex items-center mb-6">
-              <Calendar className="h-6 w-6 text-primary mr-2" />
+            <h2 className="text-xl font-bold text-secondary flex items-center mb-6">
+              <Calendar className="h-5 w-5 text-primary mr-2" />
               Events
             </h2>
             <Card>
@@ -175,8 +175,8 @@ export default function HomePage() {
 
         {/* Quick Access */}
         <div className="mt-12">
-          <h2 className="text-2xl font-bold text-secondary mb-6 flex items-center">
-            <Zap className="h-6 w-6 text-primary mr-2" />
+          <h2 className="text-xl font-bold text-secondary mb-6 flex items-center">
+            <Zap className="h-5 w-5 text-primary mr-2" />
             Quick Access
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

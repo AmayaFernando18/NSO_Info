@@ -85,8 +85,8 @@ export default function CorporateProfilePage() {
             <Building2 className="h-4 w-4" />
             <span className="text-xs font-semibold tracking-widest uppercase">Corporate Profile</span>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold">Executive Leadership & Governance</h1>
-          <p className="text-white/80 max-w-2xl mt-3 text-lg">
+          <h1 className="text-2xl md:text-3xl font-bold">Executive Leadership & Governance</h1>
+          <p className="text-white/80 max-w-2xl mt-3 text-base">
             Overview of NSO strategic priorities, guiding principles, and senior contacts for each operational stream.
           </p>
         </div>
@@ -96,16 +96,16 @@ export default function CorporateProfilePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="border-l-4 border-l-primary shadow-lg">
             <div className="flex items-center gap-3 mb-4">
-              <Eye className="h-6 w-6 text-primary" />
-              <h2 className="text-xl font-bold text-secondary">Vision</h2>
+              <Eye className="h-5 w-5 text-primary" />
+              <h2 className="text-base font-bold text-secondary">Vision</h2>
             </div>
             <p className="text-gray-600 leading-relaxed">{statements.vision}</p>
           </Card>
 
           <Card className="border-l-4 border-l-accent shadow-lg">
             <div className="flex items-center gap-3 mb-4">
-              <Target className="h-6 w-6 text-accent" />
-              <h2 className="text-xl font-bold text-secondary">Mission</h2>
+              <Target className="h-5 w-5 text-accent" />
+              <h2 className="text-base font-bold text-secondary">Mission</h2>
             </div>
             <p className="text-gray-600 leading-relaxed">{statements.mission}</p>
           </Card>
@@ -120,7 +120,7 @@ export default function CorporateProfilePage() {
                   <div className="p-3 rounded-xl bg-primary/10 text-primary">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="text-lg font-semibold text-secondary">{area.title}</h3>
+                  <h3 className="text-base font-semibold text-secondary">{area.title}</h3>
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed">{area.description}</p>
               </Card>
@@ -132,7 +132,7 @@ export default function CorporateProfilePage() {
           <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-primary font-semibold">Leadership Directory</p>
-              <h2 className="text-3xl font-bold text-secondary mt-2">Corporate Management Team</h2>
+              <h2 className="text-xl font-bold text-secondary mt-2">Corporate Management Team</h2>
             </div>
           </div>
 
@@ -141,7 +141,7 @@ export default function CorporateProfilePage() {
               <Card key={manager.id} hover className="border border-border/70 shadow-sm">
                 <div className="mb-4">
                   <p className="text-xs uppercase text-gray-500 tracking-widest">{manager.department}</p>
-                  <h3 className="text-lg font-bold text-secondary mt-1">{manager.name}</h3>
+                  <h3 className="text-base font-bold text-secondary mt-1">{manager.name}</h3>
                   <p className="text-sm font-semibold text-primary">{manager.role}</p>
                 </div>
 

@@ -24,14 +24,14 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center bg-gradient-to-br from-primary to-accent p-4 rounded-2xl shadow-vibrant mb-4">
             <Zap className="h-12 w-12 text-white" />
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
             NSO Info Portal
           </h1>
           <p className="text-gray-600">National System Operator</p>
         </div>
 
         <div className="bg-surface rounded-2xl shadow-xl p-8 border border-border">
-          <h2 className="text-2xl font-bold text-secondary mb-6">Employee Login</h2>
+          <h2 className="text-xl font-bold text-secondary mb-6">Employee Login</h2>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>

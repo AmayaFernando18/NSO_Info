@@ -50,7 +50,7 @@ export default function DownloadSpecificationsPage() {
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1568667256549-094345857637?w=1200')] bg-cover bg-center opacity-20"></div>
         <div className="absolute inset-0 bg-gradient-to-r from-secondary/90 to-primary/80"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">DOWNLOAD SPECIFICATIONS</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-4">DOWNLOAD SPECIFICATIONS</h1>
           <Breadcrumb items={[{ label: 'DOWNLOAD SPECIFICATIONS' }]} />
         </div>
       </div>
@@ -96,7 +96,7 @@ export default function DownloadSpecificationsPage() {
 
         {/* Download Specifications */}
         <div className="mt-8">
-          <h2 className="text-2xl font-bold text-secondary mb-6">Download Specifications</h2>
+          <h2 className="text-xl font-bold text-secondary mb-6">Download Specifications</h2>
 
           <div className="space-y-4">
             {/* Insulated Conductors & Accessories */}
