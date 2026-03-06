@@ -7,7 +7,7 @@ export const mockNews: NewsDto[] = [
     excerpt: 'NSO implements advanced AI-driven dispatch management for maximum grid efficiency.',
     content: 'Full article content here...',
     category: 'Operations',
-    imageUrl: 'https://images.unsplash.com/photo-1633356122544-f134324ef6db?w=800',
+    imageUrl: 'https://www.shutterstock.com/image-photo/dispatching-support-centers-freight-transportation-600nw-2681320375.jpg',
     publishedAt: '2026-02-05',
     author: 'Operations Division'
   },
