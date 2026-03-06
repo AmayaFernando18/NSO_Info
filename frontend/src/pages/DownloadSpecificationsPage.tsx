@@ -46,7 +46,7 @@ export default function DownloadSpecificationsPage() {
   return (
     <div className="min-h-screen bg-base">
       {/* Hero Section */}
-      <div className="relative h-[300px] bg-gradient-to-r from-secondary via-primary to-secondary overflow-hidden">
+      <div className="relative h-[400px] bg-gradient-to-r from-secondary via-primary to-secondary overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1568667256549-094345857637?w=1200')] bg-cover bg-center opacity-20"></div>
         <div className="absolute inset-0 bg-gradient-to-r from-secondary/90 to-primary/80"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">

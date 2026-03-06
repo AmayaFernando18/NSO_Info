@@ -14,6 +14,7 @@ export default {
         border: "hsl(var(--border))",
         greenDark: "hsl(var(--green-dark))",
         gold: "hsl(var(--gold))",
+        textPrimary: "hsl(var(--text-primary))",
       },
       boxShadow: {
         soft: "0 12px 40px -20px hsl(var(--primary) / 0.5)",

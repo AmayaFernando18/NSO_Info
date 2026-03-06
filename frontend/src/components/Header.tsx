@@ -14,7 +14,7 @@ export default function Header() {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-3 group">
             <img 
-              src="/images/nso-logo.png" 
+              src="/images/nso-logo.jpeg" 
               alt="NSO Logo" 
               className="h-10 w-auto object-contain group-hover:scale-105 transition-transform"
             />
@@ -26,21 +26,21 @@ export default function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
-            <Link to="/" className="text-secondary hover:text-primary transition-colors font-medium">
+            <Link to="/" className="text-lg text-secondary hover:text-primary transition-colors font-medium">
               Home
             </Link>
             
-            {/* <Link to="/news" className="text-secondary hover:text-primary transition-colors font-medium">
+            {/* <Link to="/news" className="text-lg text-secondary hover:text-primary transition-colors font-medium">
               News
             </Link> */}
             
-            <Link to="/careers" className="text-secondary hover:text-primary transition-colors font-medium">
+            <Link to="/careers" className="text-lg text-secondary hover:text-primary transition-colors font-medium">
               Careers
             </Link>
-            <Link to="/tenders" className="text-secondary hover:text-primary transition-colors font-medium">
+            <Link to="/tenders" className="text-lg text-secondary hover:text-primary transition-colors font-medium">
               Procurement
             </Link>
-            <Link to="/corporate-profile" className="text-secondary hover:text-primary transition-colors font-medium">
+            <Link to="/corporate-profile" className="text-lg text-secondary hover:text-primary transition-colors font-medium">
               Corporate Profile
             </Link>
           </nav>

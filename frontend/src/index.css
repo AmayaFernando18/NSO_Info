@@ -2,18 +2,19 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
-/* NSO/CEB Theme - Professional Dark Green & Gold */
+/* NSO/CEB Theme - Professional Navy Blue & Corporate */
 :root {
-  --base: 0 0% 98%;
-  --surface: 0 0% 100%;
-  --primary: 145 50% 20%; /* Dark Green */
+  --base: 0 0% 97%; /* Clean light gray background */
+  --surface: 0 0% 100%; /* Pure white card background */
+  --primary: 213 65% 28%; /* #1A4D8F - Professional navy blue */
   --primary-foreground: 0 0% 100%;
-  --secondary: 145 60% 15%; /* Darker Green */
-  --accent: 40 95% 60%; /* Gold/Yellow accent */
-  --muted: 0 0% 95%;
-  --border: 0 0% 90%;
-  --green-dark: 145 55% 12%; /* Very dark green for footer */
-  --gold: 40 100% 50%; /* Bright gold */
+  --secondary: 210 50% 35%; /* #2D5F7F - Darker blue */
+  --accent: 213 80% 48%; /* #1976D2 - Vibrant blue for buttons */
+  --muted: 210 20% 94%;
+  --border: 215 15% 88%;
+  --green-dark: 213 70% 22%; /* Deep navy for footer */
+  --gold: 213 80% 48%; /* Blue accent */
+  --text-primary: 218 30% 20%; /* #27374D - Dark blue-gray text */
 }
 
 * {
@@ -23,13 +24,16 @@
 }
 
 body {
-  @apply bg-base text-secondary;
+  @apply bg-base;
+  color: hsl(var(--text-primary));
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 html {
+  font-size: 18px; /* Increase root font size for better readability */
+  line-height: 1.6;
   scroll-behavior: smooth;
 }
 

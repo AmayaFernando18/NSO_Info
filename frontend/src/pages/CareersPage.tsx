@@ -65,9 +65,9 @@ export default function CareersPage() {
   return (
     <div className="min-h-screen bg-base">
       {/* Hero Section */}
-      <div className="relative h-[300px] bg-gradient-to-r from-secondary via-primary to-secondary overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?w=1200')] bg-cover bg-center opacity-20"></div>
-        <div className="absolute inset-0 bg-gradient-to-r from-secondary/90 to-primary/80"></div>
+      <div className="relative h-[500px] bg-gradient-to-r from-secondary via-primary to-secondary overflow-hidden">
+        <div className="absolute inset-0 bg-[url('/images/team.avif')] bg-cover bg-center opacity-50"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-secondary/60 to-primary/50"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Join Our Team</h1>
           <p className="text-xl text-gray-100 max-w-2xl">

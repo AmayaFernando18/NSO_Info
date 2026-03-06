@@ -5,7 +5,7 @@ import { mockEvents } from '../mocks/events';
 import { mockHighlights } from '../mocks/highlights';
 import { mockHeroImages } from '../mocks/heroImages';
 import Card from '../components/Card';
-import { Calendar, FileText, Zap, ArrowRight, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
+import { Calendar, FileText, Zap, ArrowRight, TrendingUp, TrendingDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   DocumentTextIcon,
@@ -42,7 +42,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen">
       {/* Hero Carousel */}
-      <div className="relative h-[500px] bg-gradient-to-r from-secondary via-primary to-secondary overflow-hidden">
+      <div className="relative h-[600px] bg-gradient-to-r from-primary via-accent to-primary overflow-hidden">
         {mockHeroImages.map((image, index) => (
           <div
             key={image.id}
@@ -55,25 +55,11 @@ export default function HomePage() {
               alt={image.title}
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-greenDark/95 via-secondary/85 to-primary/75 flex items-center">
+            <div className="absolute inset-0 bg-gradient-to-r from-secondary/90 via-primary/70 to-accent/70 flex items-center">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-                <div className="max-w-3xl">
-                  <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">{image.title}</h1>
-                  <p className="text-xl text-gray-100 mb-8 leading-relaxed">{image.description}</p>
-                  <div className="flex gap-4">
-                    <Link 
-                      to="/careers" 
-                      className="bg-accent hover:bg-accent/90 text-white px-8 py-3 rounded-lg font-semibold transition-all hover:shadow-glow flex items-center"
-                    >
-                      Explore Opportunities <ArrowRight className="ml-2 h-5 w-5" />
-                    </Link>
-                    <Link 
-                      to="/tenders" 
-                      className="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white px-8 py-3 rounded-lg font-semibold transition-all border border-white/30"
-                    >
-                      View Tenders
-                    </Link>
-                  </div>
+                <div className="max-w-2xl">
+                  <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">{image.title}</h1>
+                  <p className="text-xl text-gray-100">{image.description}</p>
                 </div>
               </div>
             </div>
@@ -102,25 +88,25 @@ export default function HomePage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Highlights */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           {mockHighlights.map((highlight) => {
             const Icon = iconMap[highlight.icon] || Zap;
             return (
               <Card key={highlight.id} hover>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-3">
-                      <div className="bg-gradient-to-br from-primary/10 to-accent/10 p-3 rounded-xl">
-                        <Icon className="h-6 w-6 text-primary" />
+                    <div className="flex items-center space-x-3 mb-2">
+                      <div className="bg-gradient-to-br from-primary/10 to-accent/10 p-2 rounded-lg">
+                        <Icon className="h-5 w-5 text-primary" />
                       </div>
                     </div>
-                    <h3 className="text-3xl font-bold text-secondary mb-2">{highlight.value}</h3>
-                    <p className="text-sm font-semibold text-gray-800">{highlight.title}</p>
-                    <p className="text-xs text-gray-600 mt-2">{highlight.description}</p>
+                    <h3 className="text-2xl font-bold text-secondary mb-1">{highlight.value}</h3>
+                    <p className="text-sm font-medium text-gray-700">{highlight.title}</p>
+                    <p className="text-xs text-gray-500 mt-1">{highlight.description}</p>
                   </div>
                   {highlight.trend && (
-                    <div className={`flex items-center text-sm font-semibold ${highlight.trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                      {highlight.trend === 'up' ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
+                    <div className={`flex items-center text-sm ${highlight.trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+                      {highlight.trend === 'up' ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                       <span className="ml-1">{highlight.trendValue}</span>
                     </div>
                   )}
@@ -131,14 +117,14 @@ export default function HomePage() {
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-3xl font-bold text-secondary flex items-center">
-                <FileText className="h-7 w-7 text-primary mr-3" />
+              <h2 className="text-2xl font-bold text-secondary flex items-center">
+                <FileText className="h-6 w-6 text-primary mr-2" />
                 Latest Updates
               </h2>
-              <Link to="/news" className="text-primary hover:text-accent flex items-center text-sm font-semibold transition-colors">
+              <Link to="/news" className="text-primary hover:text-accent flex items-center text-sm font-medium">
                 View All <ArrowRight className="h-4 w-4 ml-1" />
               </Link>
             </div>
@@ -150,16 +136,15 @@ export default function HomePage() {
                       <img
                         src={news.imageUrl}
                         alt={news.title}
-                        className="w-40 h-28 object-cover rounded-lg flex-shrink-0 shadow-sm"
+                        className="w-32 h-24 object-cover rounded-lg flex-shrink-0"
                       />
                     )}
                     <div className="flex-1">
-                      <span className="inline-block px-3 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full mb-2">
+                      <span className="inline-block px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded mb-2">
                         {news.category}
                       </span>
-                      <h3 className="font-bold text-secondary mb-2 text-lg hover:text-primary transition-colors cursor-pointer">{news.title}</h3>
-                      <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">{news.excerpt}</p>
-                      <p className="text-xs text-gray-500 mt-2">{new Date(news.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                      <h3 className="font-semibold text-secondary mb-2">{news.title}</h3>
+                      <p className="text-sm text-gray-600 line-clamp-2">{news.excerpt}</p>
                     </div>
                   </div>
                 </Card>
@@ -168,22 +153,18 @@ export default function HomePage() {
           </div>
 
           <div>
-            <h2 className="text-3xl font-bold text-secondary flex items-center mb-6">
-              <Calendar className="h-7 w-7 text-primary mr-3" />
+            <h2 className="text-2xl font-bold text-secondary flex items-center mb-6">
+              <Calendar className="h-6 w-6 text-primary mr-2" />
               Events
             </h2>
             <Card>
               <div className="space-y-4">
                 {mockEvents.slice(0, 4).map((event) => (
-                  <div key={event.id} className="border-l-4 border-primary pl-4 py-2 hover:bg-muted/50 rounded-r-lg transition-colors cursor-pointer">
-                    <h4 className="font-bold text-sm text-secondary mb-1">{event.title}</h4>
-                    <p className="text-xs text-gray-600 mb-1 flex items-center">
-                      <MapPin className="h-3 w-3 mr-1" />
-                      {event.location}
-                    </p>
-                    <p className="text-xs text-primary font-semibold flex items-center">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      {new Date(event.eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  <div key={event.id} className="border-l-4 border-primary pl-3">
+                    <h4 className="font-semibold text-sm text-secondary">{event.title}</h4>
+                    <p className="text-xs text-gray-600 mt-1">{event.location}</p>
+                    <p className="text-xs text-primary font-medium mt-1">
+                      {new Date(event.eventDate).toLocaleDateString()}
                     </p>
                   </div>
                 ))}
@@ -193,49 +174,26 @@ export default function HomePage() {
         </div>
 
         {/* Quick Access */}
-        <div className="mt-16">
-          <h2 className="text-3xl font-bold text-secondary mb-8 flex items-center">
-            <Zap className="h-7 w-7 text-primary mr-3" />
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold text-secondary mb-6 flex items-center">
+            <Zap className="h-6 w-6 text-primary mr-2" />
             Quick Access
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {mockQuickLinks.slice(0, 8).map((link) => {
               const Icon = iconMap[link.icon] || Zap;
               return (
                 <Card key={link.id} hover>
-                  <Link to={link.url} className="block text-center p-2">
-                    <div className="bg-gradient-to-br from-primary/10 to-accent/10 w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-                      <Icon className="h-7 w-7 text-primary" />
+                  <Link to={link.url} className="block text-center">
+                    <div className="bg-gradient-to-br from-primary/10 to-accent/10 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3">
+                      <Icon className="h-6 w-6 text-primary" />
                     </div>
-                    <h3 className="font-semibold text-xs text-secondary mb-1 leading-tight">{link.title}</h3>
+                    <h3 className="font-semibold text-sm text-secondary mb-1">{link.title}</h3>
+                    <p className="text-xs text-gray-500">{link.description}</p>
                   </Link>
                 </Card>
               );
             })}
-          </div>
-        </div>
-
-        {/* Call to Action Section */}
-        <div className="mt-16 bg-gradient-to-r from-primary to-secondary rounded-2xl p-8 md:p-12 text-white shadow-vibrant">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Join the National System Operator Team</h2>
-            <p className="text-lg text-gray-100 mb-8 leading-relaxed">
-              Be part of Sri Lanka's energy future. We're looking for talented professionals to help power the nation forward.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link 
-                to="/careers" 
-                className="bg-accent hover:bg-accent/90 text-white px-8 py-4 rounded-lg font-semibold transition-all hover:shadow-glow inline-flex items-center justify-center"
-              >
-                View Career Opportunities <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-              <Link 
-                to="/tenders" 
-                className="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white px-8 py-4 rounded-lg font-semibold transition-all border border-white/30 inline-flex items-center justify-center"
-              >
-                Procurement & Tenders
-              </Link>
-            </div>
           </div>
         </div>
       </div>
