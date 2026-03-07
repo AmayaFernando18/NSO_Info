@@ -7,7 +7,7 @@ export const mockNews: NewsDto[] = [
     excerpt: 'NSO implements advanced AI-driven dispatch management for maximum grid efficiency.',
     content: 'Full article content here...',
     category: 'Operations',
-    imageUrl: 'https://www.shutterstock.com/image-photo/dispatching-support-centers-freight-transportation-600nw-2681320375.jpg',
+    imageUrl: '/images/dispatch.webp',
     publishedAt: '2026-02-05',
     author: 'Operations Division'
   },
@@ -17,7 +17,7 @@ export const mockNews: NewsDto[] = [
     excerpt: 'New competitive bidding procedures approved to enhance electricity procurement efficiency.',
     content: 'Full article content here...',
     category: 'Procurement',
-    imageUrl: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800',
+    imageUrl: '/images/power.jpg',
     publishedAt: '2026-02-04',
     author: 'Procurement Team'
   },
@@ -27,7 +27,7 @@ export const mockNews: NewsDto[] = [
     excerpt: 'Advanced forecasting models ensure optimal planning and system stability.',
     content: 'Full article content here...',
     category: 'Planning',
-    imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800',
+    imageUrl: '/images/demand.jpg',
     publishedAt: '2026-02-03',
     author: 'Planning Division'
   },
@@ -37,7 +37,7 @@ export const mockNews: NewsDto[] = [
     excerpt: 'Power system maintained excellent stability throughout the month.',
     content: 'Full article content here...',
     category: 'Reports',
-    imageUrl: 'https://images.unsplash.com/photo-1642536473529-a6a37e69d1ff?w=800',
+    imageUrl: '/images/power.jpg',
     publishedAt: '2026-02-02',
     author: 'System Planning'
   }

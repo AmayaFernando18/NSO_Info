@@ -59,7 +59,7 @@ export default function TenderNoticesPage() {
     <div className="min-h-screen bg-base">
       {/* Hero Section */}
       <div className="relative h-[300px] bg-gradient-to-r from-secondary via-primary to-secondary overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200')] bg-cover bg-center opacity-50"></div>
+        <div className="absolute inset-0 bg-[url('/images/tender.jpg')] bg-cover bg-center opacity-50"></div>
         <div className="absolute inset-0 bg-gradient-to-r from-secondary/60 to-primary/50"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-4">TENDER NOTICES</h1>
