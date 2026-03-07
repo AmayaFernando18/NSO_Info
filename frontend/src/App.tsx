@@ -7,6 +7,7 @@ import CareersPage from "./pages/CareersPage";
 import TenderNoticesPage from "./pages/TenderNoticesPage";
 import DownloadSpecificationsPage from "./pages/DownloadSpecificationsPage";
 import CorporateProfilePage from "./pages/CorporateProfilePage";
+import { canAccessAdmin } from './utils/rbac'
 
 // function ProtectedRoute({ children }: { children: ReactNode }) {
 //   const { user, loading } = useUser();

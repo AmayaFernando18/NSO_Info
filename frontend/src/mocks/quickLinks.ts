@@ -1,6 +1,6 @@
-import type { QuickLinkDto } from '../types';
+import type { QuickAccessDto } from '../types';
 
-export const mockQuickLinks: QuickLinkDto[] = [
+export const mockQuickLinks: QuickAccessDto[] = [
   {
     id: '1',
     title: 'Dispatch Center',

@@ -1,67 +1,53 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { User } from '../types';
-import { getCurrentUser } from '../services/authService';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import type { User } from '../types'
+import { getCurrentUser, login as loginRequest, logout as logoutRequest } from '../services/authService'
 
 interface UserContextType {
-  user: User | null;
-  loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
+  user: User | null
+  loading: boolean
+  login: (username: string, password: string) => Promise<void>
+  logout: () => void
 }
 
-const UserContext = createContext<UserContextType | undefined>(undefined);
+const UserContext = createContext<UserContextType | undefined>(undefined)
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
+        const currentUser = await getCurrentUser()
+        setUser(currentUser)
       } catch (error) {
-        console.error('Failed to get current user:', error);
-        setUser(null);
+        console.error('Failed to get current user:', error)
+        setUser(null)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    initializeAuth();
-  }, []);
+    initializeAuth()
+  }, [])
 
   const login = async (username: string, password: string) => {
-    if (username && password) {
-      const mockUser: User = {
-        id: '1',
-        username,
-        name: username.charAt(0).toUpperCase() + username.slice(1),
-        email: `${username}@nso.lk`,
-        department: 'Operations',
-        role: 'Employee'
-      };
-      localStorage.setItem('nso_user', JSON.stringify(mockUser));
-      setUser(mockUser);
-    }
-  };
+    const loggedInUser = await loginRequest(username, password)
+    setUser(loggedInUser)
+  }
 
   const logout = () => {
-    localStorage.removeItem('nso_user');
-    setUser(null);
-  };
+    logoutRequest()
+    setUser(null)
+  }
 
-  return (
-    <UserContext.Provider value={{ user, loading, login, logout }}>
-      {children}
-    </UserContext.Provider>
-  );
+  return <UserContext.Provider value={{ user, loading, login, logout }}>{children}</UserContext.Provider>
 }
 
 export function useUser() {
-  const context = useContext(UserContext);
+  const context = useContext(UserContext)
   if (context === undefined) {
-    throw new Error('useUser must be used within a UserProvider');
+    throw new Error('useUser must be used within a UserProvider')
   }
-  return context;
+  return context
 }
