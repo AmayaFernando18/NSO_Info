@@ -19,7 +19,7 @@ import { fileURLToPath } from 'url';
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dir, '../.env') });
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/edl_info';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/nso_info';
 
 /**
  * SuperAdmin user to be created
