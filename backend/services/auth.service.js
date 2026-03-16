@@ -54,13 +54,20 @@ export const validateADLogin = async (ad_user_name, ad_password) => {
     const adUser = mockResponse.data.SmartCEBUser;
     const username = adUser.ad_username || ad_user_name;
     
-    // Check if user exists in RBAC database
-    const dbUser = await User.findOne({ username });
-    
-    // Update last login timestamp if user exists in DB
+    const now = new Date();
+    // Only check if user exists in RBAC DB - DO NOT auto-create users
+    // RBAC users must be manually added by SuperAdmin
+    let dbUser = await User.findOne({ username });
+
     if (dbUser) {
-      dbUser.lastLogin = new Date();
+      // User exists in RBAC DB - update last login, keep existing permissions
+      dbUser.lastLogin = now;
       await dbUser.save();
+      logger.info(`[MOCK MODE] RBAC user found: ${username}`);
+    } else {
+      // User not in RBAC DB - they can login via AD but have no RBAC permissions
+      // They will NOT have access to admin dashboard
+      logger.info(`[MOCK MODE] User ${username} authenticated via AD but is not an RBAC user`);
     }
     
     // Format display name based on gender (Ms./Mr. prefix)
@@ -84,6 +91,7 @@ export const validateADLogin = async (ad_user_name, ad_password) => {
         displayName,
         email: adUser.ad_username,
         accessInfo: dbUser ? formatUserAccess(dbUser) : {},
+        isRbacUser: !!dbUser, // Flag to indicate if user is in RBAC system
       },
       message: 'Login successful (MOCK MODE)',
     };
@@ -109,13 +117,17 @@ export const validateADLogin = async (ad_user_name, ad_password) => {
 
       logger.info(`AD validation successful for user: ${username}`);
 
-      // Check if user exists in RBAC database
+      // Check if user exists in RBAC database - DO NOT auto-create
+      // RBAC users must be manually added by SuperAdmin
       const dbUser = await User.findOne({ username });
 
-      // Update last login timestamp if user exists in DB
+      // Update last login timestamp if user exists in RBAC DB
       if (dbUser) {
         dbUser.lastLogin = new Date();
         await dbUser.save();
+        logger.info(`RBAC user found: ${username}`);
+      } else {
+        logger.info(`User ${username} authenticated via AD but is not an RBAC user`);
       }
 
       // Format display name based on gender (Ms./Mr. prefix)
@@ -140,6 +152,7 @@ export const validateADLogin = async (ad_user_name, ad_password) => {
           displayName,
           email: adUser.ad_username,
           accessInfo: dbUser ? formatUserAccess(dbUser) : {},
+          isRbacUser: !!dbUser, // Flag to indicate if user is in RBAC system
         },
         message: 'Login successful',
       };
@@ -165,15 +178,15 @@ export const validateADLogin = async (ad_user_name, ad_password) => {
 export const checkADAvailability = async (user_name) => {
   if (!user_name) {
     throw new Error('Username is required');
+  }
 
-    // Use mock AD if enabled
-    if (USE_MOCK_AD) {
-      logger.warn('[MOCK MODE] Using mock AD availability check');
-      const mockResponse = await mockCheckADAvailability(user_name);
-      return {
-        IsSuccess: mockResponse.data.IsSuccess,
-      };
-    }
+  // Use mock AD if enabled
+  if (USE_MOCK_AD) {
+    logger.warn('[MOCK MODE] Using mock AD availability check');
+    const mockResponse = await mockCheckADAvailability(user_name);
+    return {
+      IsSuccess: mockResponse.data.IsSuccess,
+    };
   }
 
   logger.info(`Checking AD availability for user: ${user_name}`);
@@ -218,5 +231,6 @@ export const getCurrentUser = async (username, isSuperAdmin, displayName) => {
     functionPermissions: dbUser?.functionPermissions || [],
     name: displayName || username,
     mobileNo: username, // Use username as fallback for mobileNo
+    isRbacUser: !!dbUser, // True if user exists in RBAC system
   };
 };

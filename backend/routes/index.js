@@ -5,6 +5,7 @@ import authRoutes from './auth.js';
 import heroSlidesRoutes from './heroSlides.js';
 import newsRoutes from './news.js';
 import userRoutes from './users.js';
+import eventsRoutes from './events.js';
 
 const router = express.Router();
 
@@ -13,5 +14,6 @@ router.use('/auth', authRoutes);
 router.use('/hero-slides', heroSlidesRoutes);
 router.use('/news', newsRoutes);
 router.use('/users', userRoutes);
+router.use('/events', eventsRoutes);
 
 export default router;

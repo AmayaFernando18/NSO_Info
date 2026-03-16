@@ -21,6 +21,12 @@ type SingleUserResponse = {
   user: RbacUser
 }
 
+type DeleteResponse = {
+  success: boolean
+  message: string
+  username: string
+}
+
 type AssignPayload = {
   username: string
   isSuperAdmin?: boolean
@@ -42,6 +48,10 @@ export const assignUserAccess = async (payload: AssignPayload): Promise<RbacUser
   return data.user
 }
 
-export const removeUserAccess = async (epf: string): Promise<void> => {
-  await api.delete(`/users/${epf}`)
+export const removeUserAccess = async (epf: string): Promise<DeleteResponse> => {
+  const { data } = await api.delete<DeleteResponse>(`/users/${epf}`)
+  if (!data.success) {
+    throw new Error(data.message || 'Failed to remove user access')
+  }
+  return data
 }

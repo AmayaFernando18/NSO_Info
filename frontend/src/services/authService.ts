@@ -20,6 +20,7 @@ type LoginResponse = {
     email?: string
     isSuperAdmin?: boolean
     functionPermissions?: FunctionPermission[]
+    isRbacUser?: boolean
   }
 }
 
@@ -30,6 +31,7 @@ type MeResponse = {
     name?: string
     isSuperAdmin?: boolean
     functionPermissions?: FunctionPermission[]
+    isRbacUser?: boolean
   }
 }
 
@@ -40,12 +42,14 @@ const normalizeUser = (payload: {
   email?: string
   isSuperAdmin?: boolean
   functionPermissions?: FunctionPermission[]
+  isRbacUser?: boolean
 }): User => ({
   username: payload.username,
   name: payload.displayName || payload.name || payload.username,
   email: payload.email,
   isSuperAdmin: Boolean(payload.isSuperAdmin),
   functionPermissions: payload.functionPermissions || [],
+  isRbacUser: payload.isRbacUser ?? (Boolean(payload.isSuperAdmin) || (payload.functionPermissions || []).length > 0),
 })
 
 export async function login(adUsername: string, adPassword: string): Promise<User> {

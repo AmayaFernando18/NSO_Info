@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
-import { Menu, X, User, LogOut, Bell, Search } from 'lucide-react';
+import { Menu, X, User, LogOut, Bell, Search, Settings } from 'lucide-react';
 import { useState } from 'react';
-import { canAccessAdmin } from '../utils/rbac'
+import { canAccessAdmin } from '../utils/rbac';
 
 export default function Header() {
   const { user, logout } = useUser();
@@ -41,6 +41,12 @@ export default function Header() {
             <Link to="/corporate-profile" className="text-base text-secondary hover:text-primary transition-colors font-medium">
               Corporate Profile
             </Link>
+            {canAccessAdmin(user) && (
+              <Link to="/admin" className="text-base text-secondary hover:text-primary transition-colors font-medium flex items-center gap-1">
+                <Settings className="h-4 w-4" />
+                Admin
+              </Link>
+            )}
           </nav>
 
           {/* User Actions */}
@@ -124,6 +130,16 @@ export default function Header() {
               >
                 Specifications
               </Link>
+              {canAccessAdmin(user) && (
+                <Link
+                  to="/admin"
+                  className="px-4 py-2 hover:bg-muted rounded-lg transition-colors flex items-center space-x-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Settings className="h-4 w-4" />
+                  <span>Admin Panel</span>
+                </Link>
+              )}
               {user && (
                 <button
                   onClick={() => {

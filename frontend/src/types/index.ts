@@ -19,6 +19,7 @@ export interface User {
   role?: string;
   isSuperAdmin: boolean;
   functionPermissions: FunctionPermission[];
+  isRbacUser?: boolean; // True if user exists in RBAC system (added by SuperAdmin)
 }
 
 export interface Employee {
@@ -58,14 +59,50 @@ export interface NewsDto {
   deletedBy?: string;
 }
 
+export type EventCategory = 'Meeting' | 'Training' | 'Workshop' | 'Conference' | 'Holiday' | 'Special Day' | 'Coordination' | 'Drill' | 'Other';
+
 export interface EventDto {
-  id: string;
+  id?: string;
+  _id?: string;
   title: string;
   description: string;
+  category: EventCategory;
   eventDate: string;
-  eventTime?: string;
-  location: string;
-  category: string;
+  endDate?: string | null;
+  linkLabel?: string;
+  linkUrl?: string;
+  isHoliday?: boolean;
+  isSpecialDay?: boolean;
+  activeStatus?: boolean;
+  approved?: boolean;
+  approvedBy?: string;
+  approvedAt?: string | null;
+  rejected?: boolean;
+  rejectedBy?: string;
+  rejectionReason?: string;
+  rejectedAt?: string | null;
+  createdBy?: string;
+  updatedBy?: string;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
+  deletedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface HolidayDto {
+  date: string;
+  title: string;
+  isHoliday?: boolean;
+  isSpecialDay?: boolean;
+}
+
+export interface CalendarDataDto {
+  events: EventDto[];
+  holidays: HolidayDto[];
+  specialDays: HolidayDto[];
+  year: number;
+  month: number;
 }
 
 export interface QuickAccessDto {

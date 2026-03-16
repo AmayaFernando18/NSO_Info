@@ -11,7 +11,18 @@ export const getFunctionPermission = (user: User | null, func: FunctionCode): Fu
   if (!user) return null
   if (user.isSuperAdmin) return { function: func, authority: 'M' }
 
-  return (user.functionPermissions || []).find((item) => item.function === func) || null
+  const authorities = (user.functionPermissions || [])
+    .filter((item) => item.function === func)
+    .map((item) => item.authority)
+
+  if (authorities.length === 0) return null
+
+  const highest = authorities.reduce<AuthorityCode>(
+    (current, next) => (order[next] > order[current] ? next : current),
+    authorities[0]
+  )
+
+  return { function: func, authority: highest }
 }
 
 export const hasAuthority = (
@@ -32,8 +43,11 @@ export const canPerformAction = (
   if (!user) return false
   if (user.isSuperAdmin) return true
 
-  const permission = getFunctionPermission(user, func)
-  if (!permission) return false
+  const authorities = (user.functionPermissions || [])
+    .filter((item) => item.function === func)
+    .map((item) => item.authority)
+
+  if (authorities.length === 0) return false
 
   const allow: Record<string, AuthorityCode[]> = {
     view: ['E', 'C', 'A', 'M'],
@@ -43,11 +57,26 @@ export const canPerformAction = (
     approve: ['A', 'M'],
   }
 
-  return allow[action]?.includes(permission.authority) ?? false
+  return authorities.some((authority) => allow[action]?.includes(authority))
 }
 
 export const canAccessAdmin = (user: User | null): boolean => {
   if (!user) return false
+  // Only RBAC users (manually added by SuperAdmin) can access admin
+  // Check isRbacUser flag if available, otherwise check if they have permissions
+  if (user.isRbacUser === false) return false
   if (user.isSuperAdmin) return true
   return (user.functionPermissions || []).length > 0
+}
+
+/**
+ * Check if user is an RBAC user (exists in RBAC system)
+ * Normal AD users who are not in RBAC system will have isRbacUser = false
+ */
+export const isRbacUser = (user: User | null): boolean => {
+  if (!user) return false
+  // If isRbacUser flag is explicitly set, use it
+  if (typeof user.isRbacUser === 'boolean') return user.isRbacUser
+  // Fallback: if user has isSuperAdmin or functionPermissions, they're an RBAC user
+  return user.isSuperAdmin || (user.functionPermissions || []).length > 0
 }

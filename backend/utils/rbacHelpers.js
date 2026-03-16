@@ -26,16 +26,11 @@ export const hasAuthorityForFunction = (user, requiredAuthority, func) => {
     return false;
   }
 
-  // Find permission for this function
-  const permission = user.functionPermissions.find(
-    (p) => p.function.toLowerCase() === func.toLowerCase()
-  );
+  const authorities = getAuthoritiesForFunction(user, func);
+  if (authorities.length === 0) return false;
 
-  if (!permission) return false;
-
-  // Allow if user's authority is at least the required one by hierarchy
-  if (permission.authority === 'M') return true;
-  return authorityHierarchy(permission.authority) >= authorityHierarchy(requiredAuthority);
+  // Allow if any assigned authority meets/exceeds requirement.
+  return authorities.some((authority) => authorityHierarchy(authority) >= authorityHierarchy(requiredAuthority));
 };
 
 /**
@@ -69,13 +64,8 @@ export const canPerformAction = (user, action, func) => {
 
   if (!user || !user.functionPermissions) return false;
 
-  const permission = user.functionPermissions.find(
-    (p) => String(p.function).toLowerCase() === String(func).toLowerCase()
-  );
-
-  if (!permission) return false;
-
-  const authority = permission.authority;
+  const authorities = getAuthoritiesForFunction(user, func);
+  if (authorities.length === 0) return false;
 
   // Permissions matrix
   // E (Enter): VIEW ✅, CREATE ✅, EDIT ⚠️ (only if not approved), APPROVE ❌, DELETE ❌
@@ -92,7 +82,7 @@ export const canPerformAction = (user, action, func) => {
 
   const allowedAuthorities = ALLOW[a];
   if (!allowedAuthorities) return false;
-  return allowedAuthorities.includes(authority);
+  return authorities.some((authority) => allowedAuthorities.includes(authority));
 };
 
 /**
@@ -116,17 +106,14 @@ export const canEditUnapproved = (user, func, isApproved = false) => {
 
   if (!user || !user.functionPermissions) return false;
 
-  const permission = user.functionPermissions.find(
-    (p) => String(p.function).toLowerCase() === String(func).toLowerCase()
-  );
-
-  if (!permission) return false;
+  const authorities = getAuthoritiesForFunction(user, func);
+  if (authorities.length === 0) return false;
 
   // Manager can always edit
-  if (permission.authority === 'M') return true;
+  if (authorities.includes('M')) return true;
 
   // Enter can edit only if not approved yet
-  if (permission.authority === 'E' && !isApproved) return true;
+  if (authorities.includes('E') && !isApproved) return true;
 
   // Check and Approve users cannot edit anything
   return false;
@@ -146,7 +133,7 @@ export const getUserFunctions = (user) => {
     return [];
   }
 
-  return user.functionPermissions.map((p) => p.function);
+  return [...new Set(user.functionPermissions.map((p) => p.function))];
 };
 
 /**
@@ -162,11 +149,24 @@ export const getAuthorityForFunction = (user, func) => {
     return null;
   }
 
-  const permission = user.functionPermissions.find(
-    (p) => p.function.toLowerCase() === func.toLowerCase()
-  );
+  const authorities = getAuthoritiesForFunction(user, func);
+  if (authorities.length === 0) return null;
 
-  return permission?.authority || null;
+  return authorities.reduce((highest, current) => {
+    return authorityHierarchy(current) > authorityHierarchy(highest) ? current : highest;
+  });
+};
+
+// Collect every authority assigned for the target function.
+const getAuthoritiesForFunction = (user, func) => {
+  if (!user?.functionPermissions || user.functionPermissions.length === 0) {
+    return [];
+  }
+
+  return user.functionPermissions
+    .filter((p) => String(p.function).toLowerCase() === String(func).toLowerCase())
+    .map((p) => p.authority)
+    .filter(Boolean);
 };
 
 /**
