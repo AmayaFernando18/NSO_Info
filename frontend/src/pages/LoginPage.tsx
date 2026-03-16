@@ -1,7 +1,8 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
-import { Zap, User, Lock, AlertCircle } from 'lucide-react';
+import { User, Lock, AlertCircle } from 'lucide-react';
+import Logo from '../components/Logo';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -35,8 +36,8 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-base via-accent/5 to-primary/10 px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center bg-gradient-to-br from-primary to-accent p-4 rounded-2xl shadow-vibrant mb-4">
-            <Zap className="h-12 w-12 text-white" />
+          <div className="inline-flex items-center justify-center mb-4">
+            <Logo size="large" />
           </div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
             NSO Info Portal

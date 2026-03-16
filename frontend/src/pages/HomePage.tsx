@@ -4,7 +4,7 @@ import { mockHighlights } from '../mocks/highlights';
 import { mockHeroImages } from '../mocks/heroImages';
 import Card from '../components/Card';
 import EventCalendar from '../components/EventCalendar';
-import { Calendar, FileText, Zap, ArrowRight, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, X, ExternalLink } from 'lucide-react';
+import { Calendar, FileText, Zap, ArrowRight, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, X, ExternalLink, Leaf, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   DocumentTextIcon,
@@ -17,12 +17,15 @@ import {
 } from '@heroicons/react/24/outline';
 import { fetchPublicNews } from '../services/newsService';
 import { fetchPublicHeroSlides } from '../services/heroSlidesService';
-import { fetchUpcomingEvents } from '../services/eventsService';
+import { fetchCalendarData } from '../services/eventsService';
 import type { NewsDto, EventDto } from '../types';
 import { resolveMediaUrl } from '../utils/media';
 
 const iconMap: Record<string, any> = {
   Zap,
+  TrendingUp,
+  Leaf,
+  BarChart3,
   DocumentTextIcon,
   UserIcon,
   AcademicCapIcon,
@@ -90,9 +93,27 @@ export default function HomePage() {
 
     const loadEvents = async () => {
       try {
-        const data = await fetchUpcomingEvents(6);
+        const today = new Date();
+        const todayStr = today.toISOString().slice(0, 10);
+        const year = today.getFullYear();
+        const month = today.getMonth() + 1;
+        const nextMonth = month === 12 ? 1 : month + 1;
+        const nextYear = month === 12 ? year + 1 : year;
+
+        const [curr, next] = await Promise.all([
+          fetchCalendarData(year, month),
+          fetchCalendarData(nextYear, nextMonth),
+        ]);
+
         if (isMounted) {
-          setUpcomingEvents(data || []);
+          const upcoming: EventDto[] = [
+            ...(curr?.events || []),
+            ...(next?.events || []),
+          ].filter((e) => e.eventDate.slice(0, 10) >= todayStr);
+
+          upcoming.sort((a, b) => a.eventDate.localeCompare(b.eventDate));
+
+          setUpcomingEvents(upcoming.slice(0, 3));
         }
       } catch {
         if (isMounted) {
@@ -178,23 +199,22 @@ export default function HomePage() {
             const Icon = iconMap[highlight.icon] || Zap;
             return (
               <Card key={highlight.id} hover>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <div className="bg-gradient-to-br from-primary/10 to-accent/10 p-2 rounded-lg">
-                        <Icon className="h-5 w-5 text-primary" />
+                <div className="flex flex-col h-full">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="bg-gradient-to-br from-primary to-accent p-3 rounded-xl shadow-md">
+                      <Icon className="h-6 w-6 text-white" />
+                    </div>
+                    {highlight.trend && (
+                      <div className={`flex items-center gap-1 text-sm font-semibold ${highlight.trend === 'up' ? 'text-primary' : 'text-red-600'}`}>
+                        {highlight.trend === 'up' ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                       </div>
-                    </div>
-                    <h3 className="text-xl font-bold text-secondary mb-1">{highlight.value}</h3>
-                    <p className="text-sm font-medium text-gray-700">{highlight.title}</p>
-                    <p className="text-xs text-gray-500 mt-1">{highlight.description}</p>
+                    )}
                   </div>
-                  {highlight.trend && (
-                    <div className={`flex items-center text-sm ${highlight.trend === 'up' ? 'text-primary' : 'text-red-600'}`}>
-                      {highlight.trend === 'up' ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-                      <span className="ml-1">{highlight.trendValue}</span>
-                    </div>
-                  )}
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-secondary mb-2">{highlight.value}</h3>
+                    <p className="text-sm font-medium text-gray-700 leading-snug">{highlight.title}</p>
+                    {/* <p className="text-xs text-gray-500 mt-1">{highlight.description}</p> */}
+                  </div>
                 </div>
               </Card>
             );
@@ -264,25 +284,27 @@ export default function HomePage() {
             {/* Upcoming Events Cards */}
             <div className="space-y-3 mb-6">
               {upcomingEvents.length > 0 ? (
-                upcomingEvents.slice(0, 3).map((event) => (
+                upcomingEvents.map((event) => (
                   <Card key={event.id || event._id} hover>
                     <div
                       className="border-l-4 border-primary pl-3 cursor-pointer"
                       onClick={() => setSelectedEvent(event)}
                     >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-semibold text-sm text-secondary">{event.title}</h4>
-                          <p className="text-xs text-gray-600 mt-1 line-clamp-2">{event.description}</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <span className="text-xs text-primary font-medium">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-semibold text-sm text-secondary truncate">{event.title}</h4>
+                          {event.description && (
+                            <p className="text-xs text-gray-600 mt-1 line-clamp-2 break-words">{event.description}</p>
+                          )}
+                          <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            <span className="text-xs text-primary font-medium whitespace-nowrap">
                               {new Date(event.eventDate).toLocaleDateString('en-US', {
                                 weekday: 'short',
                                 month: 'short',
                                 day: 'numeric',
                               })}
                             </span>
-                            <span className="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary">
+                            <span className="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary whitespace-nowrap">
                               {event.category}
                             </span>
                           </div>
@@ -292,7 +314,7 @@ export default function HomePage() {
                             href={event.linkUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-primary hover:text-accent p-1"
+                            className="text-primary hover:text-accent p-1 flex-shrink-0"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <ExternalLink className="h-4 w-4" />
@@ -309,8 +331,9 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Mini Calendar */}
-            <EventCalendar compact />
+            {/* Calendar */}
+            <EventCalendar onEventClick={(item) => { if ('eventDate' in item) setSelectedEvent(item as EventDto); }} />
+
           </div>
         </div>
 
@@ -436,11 +459,11 @@ export default function HomePage() {
           onClick={() => setSelectedEvent(null)}
         >
           <div
-            className="bg-white rounded-2xl max-w-lg w-full shadow-2xl"
+            className="bg-white rounded-2xl max-w-lg w-full shadow-2xl max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-primary to-accent px-6 py-4 rounded-t-2xl">
+            <div className="bg-gradient-to-r from-primary to-accent px-6 py-4 rounded-t-2xl flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Calendar className="h-5 w-5 text-white" />
@@ -456,7 +479,7 @@ export default function HomePage() {
             </div>
 
             {/* Modal Content */}
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto flex-1">
               {/* Category & Date */}
               <div className="flex flex-wrap items-center gap-3 mb-4">
                 <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
@@ -473,12 +496,12 @@ export default function HomePage() {
               </div>
 
               {/* Title */}
-              <h2 className="text-2xl font-bold text-secondary mb-4">
+              <h2 className="text-2xl font-bold text-secondary mb-4 break-words">
                 {selectedEvent.title}
               </h2>
 
               {/* Description */}
-              <p className="text-gray-600 leading-relaxed mb-6">
+              <p className="text-gray-600 leading-relaxed mb-6 break-words">
                 {selectedEvent.description}
               </p>
 
@@ -497,7 +520,7 @@ export default function HomePage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-gray-50 border-t border-border px-6 py-4 flex justify-end rounded-b-2xl">
+            <div className="bg-gray-50 border-t border-border px-6 py-4 flex justify-end rounded-b-2xl flex-shrink-0">
               <button
                 onClick={() => setSelectedEvent(null)}
                 className="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"

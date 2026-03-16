@@ -134,6 +134,11 @@ export default function NewsManagementPage() {
       return
     }
 
+    if (!form.imageUrl.trim()) {
+      setError('Please provide an image by uploading from computer or pasting an image URL.')
+      return
+    }
+
     try {
       setSubmitting(true)
       const created = await createNews({
@@ -279,6 +284,11 @@ export default function NewsManagementPage() {
 
     if (!editForm.title.trim() || !editForm.summary.trim() || !editForm.content.trim() || !editForm.category.trim()) {
       setError('Title, summary, content, and category are required.')
+      return
+    }
+
+    if (!editForm.imageUrl.trim()) {
+      setError('Please provide an image by uploading from computer or pasting an image URL.')
       return
     }
 
@@ -430,6 +440,7 @@ export default function NewsManagementPage() {
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">Image</label>
               <div className="space-y-3">
+                <p className="text-xs text-gray-500">Choose one method: upload from computer OR paste an image URL.</p>
                 <div className="flex gap-2">
                   <label className="flex-1 h-10 px-4 border border-border rounded-lg flex items-center justify-center gap-2 cursor-pointer hover:bg-gray-50 transition-colors">
                     {uploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
@@ -450,7 +461,7 @@ export default function NewsManagementPage() {
                 </div>
 
                 <input
-                  type="url"
+                  type="text"
                   value={form.imageUrl}
                   onChange={(e) => handleChange('imageUrl', e.target.value)}
                   disabled={!canCreate || submitting}
@@ -730,6 +741,7 @@ export default function NewsManagementPage() {
               <div>
                 <label className="block text-sm font-medium text-secondary mb-1">Image</label>
                 <div className="space-y-3">
+                  <p className="text-xs text-gray-500">Choose one method: upload from computer OR paste an image URL.</p>
                   <div className="flex gap-2">
                     <label className="flex-1 h-10 px-4 border border-border rounded-lg flex items-center justify-center gap-2 cursor-pointer hover:bg-gray-50 transition-colors">
                       {editUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
@@ -750,7 +762,7 @@ export default function NewsManagementPage() {
                   </div>
 
                   <input
-                    type="url"
+                    type="text"
                     value={editForm.imageUrl}
                     onChange={(e) => handleEditChange('imageUrl', e.target.value)}
                     className="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"

@@ -226,11 +226,11 @@ export default function EventsPage() {
           onClick={() => setSelectedEvent(null)}
         >
           <div
-            className="bg-white rounded-2xl max-w-lg w-full shadow-2xl"
+            className="bg-white rounded-2xl max-w-lg w-full shadow-2xl max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-primary to-accent px-6 py-4 rounded-t-2xl">
+            <div className="bg-gradient-to-r from-primary to-accent px-6 py-4 rounded-t-2xl flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Calendar className="h-5 w-5 text-white" />
@@ -246,7 +246,7 @@ export default function EventsPage() {
             </div>
 
             {/* Modal Content */}
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto flex-1">
               <div className="flex flex-wrap items-center gap-3 mb-4">
                 <span
                   className={`px-3 py-1 text-sm font-medium rounded-full ${getCategoryBadgeColor(
@@ -265,9 +265,9 @@ export default function EventsPage() {
                 </span>
               </div>
 
-              <h2 className="text-2xl font-bold text-secondary mb-4">{selectedEvent.title}</h2>
+              <h2 className="text-2xl font-bold text-secondary mb-4 break-words">{selectedEvent.title}</h2>
 
-              <p className="text-gray-600 leading-relaxed mb-6">{selectedEvent.description}</p>
+              <p className="text-gray-600 leading-relaxed mb-6 break-words">{selectedEvent.description}</p>
 
               {selectedEvent.linkLabel && selectedEvent.linkUrl && (
                 <a
@@ -283,7 +283,7 @@ export default function EventsPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-gray-50 border-t border-border px-6 py-4 flex justify-end rounded-b-2xl">
+            <div className="bg-gray-50 border-t border-border px-6 py-4 flex justify-end rounded-b-2xl flex-shrink-0">
               <button
                 onClick={() => setSelectedEvent(null)}
                 className="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"

@@ -1,5 +1,6 @@
 import { NavLink, Outlet, Link } from 'react-router-dom'
 import { LayoutDashboard, Newspaper, ShieldCheck, Image, ArrowLeft, LogOut, Calendar } from 'lucide-react'
+import Logo from '../Logo'
 import { useUser } from '../../context/UserContext'
 import { hasAuthority } from '../../utils/rbac'
 import { RBAC_FUNCTION } from '../../constants/rbac'
@@ -36,12 +37,7 @@ export default function AdminLayout() {
       <aside className="hidden lg:flex flex-col w-[280px] h-screen flex-shrink-0 border-r border-border bg-white/90 backdrop-blur-xl shadow-xl p-5 relative z-20">
         {/* Logo Header with Gradient */}
         <Link to="/" className="flex items-center gap-3 mb-6 pb-5 border-b border-border group">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary to-accent rounded-xl blur opacity-40 group-hover:opacity-60 transition-opacity"></div>
-            <div className="relative bg-gradient-to-br from-primary to-accent p-2 rounded-xl shadow-lg group-hover:scale-105 transition-transform">
-              <LayoutDashboard className="h-6 w-6 text-white" />
-            </div>
-          </div>
+          <Logo size="medium" />
           <div>
             <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">NSO Info</h1>
             <p className="text-xs text-gray-500">Admin Panel</p>
@@ -106,9 +102,7 @@ export default function AdminLayout() {
       <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white/90 backdrop-blur-xl border-b border-border p-3">
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <div className="bg-gradient-to-br from-primary to-accent p-1.5 rounded-lg">
-              <LayoutDashboard className="h-5 w-5 text-white" />
-            </div>
+            <Logo size="small" />
             <span className="font-bold text-primary">NSO Admin</span>
           </Link>
           <div className="flex items-center gap-2">
@@ -149,7 +143,7 @@ export default function AdminLayout() {
       <main className="flex-1 h-screen overflow-y-auto relative z-10">
         <div className="p-4 md:p-6 lg:p-8 lg:pt-6 pt-32 min-h-full">
           <div className="max-w-6xl mx-auto">
-            <div className="rounded-2xl border border-border bg-white/80 backdrop-blur-xl shadow-2xl overflow-hidden">
+            <div className="rounded-2xl border border-border bg-white shadow-2xl overflow-hidden">
               <div className="p-4 md:p-6 lg:p-8">
                 <Outlet />
               </div>

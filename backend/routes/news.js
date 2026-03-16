@@ -65,19 +65,34 @@ const newsBodySchema = z.object({
   summary: z.string().min(2),
   content: z.string().min(2),
   category: z.string().min(2),
-  imageUrl: z.string().optional(),
+  imageUrl: z.string().trim().optional(),
   activeStatus: z.boolean().optional(),
   publishedAt: z.coerce.date().optional(),
 });
 
+const createNewsBodySchema = newsBodySchema.refine((body) => Boolean(body.imageUrl && body.imageUrl.trim()), {
+  message: 'Provide an image by uploading from computer or using an image URL',
+  path: ['imageUrl'],
+});
+
+const updateNewsBodySchema = newsBodySchema.partial().superRefine((body, ctx) => {
+  if ('imageUrl' in body && typeof body.imageUrl === 'string' && !body.imageUrl.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['imageUrl'],
+      message: 'If provided, imageUrl cannot be empty',
+    });
+  }
+});
+
 const createNewsSchema = z.object({
-  body: newsBodySchema,
+  body: createNewsBodySchema,
   params: z.object({}),
   query: z.object({}),
 });
 
 const updateNewsSchema = z.object({
-  body: newsBodySchema.partial(),
+  body: updateNewsBodySchema,
   params: z.object({ id: z.string().min(1) }),
   query: z.object({}),
 });

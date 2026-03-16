@@ -5,6 +5,7 @@ import Layout from "./components/Layout";
 import AdminLayout from "./components/admin/AdminLayout";
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
+import NewsPage from "./pages/NewsPage";
 import CareersPage from "./pages/CareersPage";
 import TenderNoticesPage from "./pages/TenderNoticesPage";
 import DownloadSpecificationsPage from "./pages/DownloadSpecificationsPage";
@@ -97,7 +98,7 @@ function AppRoutes() {
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route path="/" element={<HomePage />} />
         <Route path="/corporate-profile" element={<CorporateProfilePage />} />
-        <Route path="/news" element={<HomePage />} />
+        <Route path="/news" element={<NewsPage />} />
         <Route path="/careers" element={<CareersPage />} />
         <Route path="/tenders" element={<TenderNoticesPage />} />
         <Route path="/specifications" element={<DownloadSpecificationsPage />} />

@@ -125,7 +125,7 @@ export interface ServiceDto {
 export interface HighlightDto {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   value: string;
   icon: string;
   trend?: 'up' | 'down';
