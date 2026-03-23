@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FileText, ExternalLink, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { FileText, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { fetchPublicNews } from '../services/newsService'
 import Card from '../components/Card'
 import type { NewsDto } from '../types'

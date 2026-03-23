@@ -15,6 +15,7 @@ import UsersManagementPage from "./pages/admin/UsersManagementPage";
 import NewsManagementPage from "./pages/admin/NewsManagementPage";
 import HeroManagementPage from "./pages/admin/HeroManagementPage";
 import EventsManagementPage from "./pages/admin/EventsManagementPage";
+import CorporateManagementPage from "./pages/admin/CorporateManagementPage";
 import EventsPage from "./pages/EventsPage";
 import { canAccessAdmin } from "./utils/rbac";
 
@@ -112,6 +113,7 @@ function AppRoutes() {
         <Route path="news" element={<NewsManagementPage />} />
         <Route path="hero" element={<HeroManagementPage />} />
         <Route path="events" element={<EventsManagementPage />} />
+        <Route path="corporate" element={<CorporateManagementPage />} />
       </Route>
     </Routes>
   );

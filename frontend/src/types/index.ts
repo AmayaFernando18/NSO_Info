@@ -33,6 +33,39 @@ export interface Employee {
   phone: string;
 }
 
+export interface CorporateMemberDto {
+  id?: string;
+  _id?: string;
+  name: string;
+  position: string;
+  department?: string;
+  phone: string;
+  email: string;
+  imageUrl?: string;
+  category?: CorporateCategoryDto | string | null;
+  categoryId?: string;
+  activeStatus?: boolean;
+  displayOrder?: number;
+  createdBy?: string;
+  updatedBy?: string;
+  deletedAt?: string | null;
+  deletedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CorporateCategoryDto {
+  id?: string;
+  _id?: string;
+  name: string;
+  activeStatus?: boolean;
+  displayOrder?: number;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface NewsDto {
   id?: string;
   _id?: string;

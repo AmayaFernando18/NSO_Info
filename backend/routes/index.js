@@ -6,6 +6,7 @@ import heroSlidesRoutes from './heroSlides.js';
 import newsRoutes from './news.js';
 import userRoutes from './users.js';
 import eventsRoutes from './events.js';
+import corporateRoutes from './corporate.js';
 
 const router = express.Router();
 
@@ -15,5 +16,6 @@ router.use('/hero-slides', heroSlidesRoutes);
 router.use('/news', newsRoutes);
 router.use('/users', userRoutes);
 router.use('/events', eventsRoutes);
+router.use('/corporate', corporateRoutes);
 
 export default router;
