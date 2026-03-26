@@ -189,6 +189,46 @@ html {
   background-clip: text;
 }
 
+/* Slide-over Panel Animations */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.slide-in-right {
+  animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.slide-out-right {
+  animation: slideOutRight 0.25s ease-in both;
+}
+
+.backdrop-fade-in {
+  animation: backdropFadeIn 0.25s ease-out both;
+}
+
 /* Enhanced Focus Styles for Accessibility */
 *:focus-visible {
   outline: 2px solid hsl(var(--accent));

@@ -1,6 +1,65 @@
 import User from '../models/User.js';
 import { sendSuccess, sendError } from '../utils/apiResponse.js';
 
+const AUTHORITY_RANK = {
+  C: 1,
+  E: 2,
+  A: 3,
+  M: 4,
+};
+
+const normalizeFunctionPermissions = (functionPermissions = []) => {
+  const cleaned = Array.isArray(functionPermissions)
+    ? functionPermissions
+        .filter((p) => p && p.function && p.authority)
+        .map((p) => ({
+          function: String(p.function).trim(),
+          authority: String(p.authority).trim().toUpperCase(),
+        }))
+    : [];
+
+  const bestByFunction = new Map();
+  const seenByFunction = new Map();
+
+  cleaned.forEach((permission) => {
+    const fnKey = permission.function.toLowerCase();
+    const seen = seenByFunction.get(fnKey) || [];
+    seen.push(permission.authority);
+    seenByFunction.set(fnKey, seen);
+
+    const current = bestByFunction.get(fnKey);
+    if (!current) {
+      bestByFunction.set(fnKey, permission);
+      return;
+    }
+
+    const currentRank = AUTHORITY_RANK[current.authority] || 0;
+    const candidateRank = AUTHORITY_RANK[permission.authority] || 0;
+    if (candidateRank > currentRank) {
+      bestByFunction.set(fnKey, permission);
+    }
+  });
+
+  const normalized = [...bestByFunction.values()];
+  const duplicateWarnings = [];
+
+  seenByFunction.forEach((authorities, fnKey) => {
+    if (authorities.length <= 1) return;
+
+    const kept = bestByFunction.get(fnKey);
+    const discarded = [...new Set(authorities.filter((authority) => authority !== kept.authority))];
+
+    duplicateWarnings.push({
+      function: kept.function,
+      keptAuthority: kept.authority,
+      discardedAuthorities: discarded,
+      totalEntries: authorities.length,
+    });
+  });
+
+  return { normalized, duplicateWarnings };
+};
+
 /**
  * GET /users/:epf
  * Get user by EPF number (username)
@@ -32,12 +91,7 @@ export const assignUserAccess = async (req, res, next) => {
       return sendError(res, 400, 'username is required');
     }
 
-    // Sanitize function permissions
-    const sanitized = Array.isArray(functionPermissions)
-      ? functionPermissions
-          .filter((p) => p && p.function && p.authority)
-          .map((p) => ({ function: String(p.function), authority: String(p.authority) }))
-      : [];
+    const { normalized: sanitized, duplicateWarnings } = normalizeFunctionPermissions(functionPermissions);
 
     if (!isSuperAdmin && sanitized.length === 0) {
       return sendError(res, 400, 'Provide at least one function permission or set isSuperAdmin');
@@ -55,7 +109,15 @@ export const assignUserAccess = async (req, res, next) => {
       setDefaultsOnInsert: true,
     });
 
-    sendSuccess(res, { message: 'Access saved', user });
+    if (duplicateWarnings.length > 0) {
+      console.warn('[RBAC] Duplicate function permissions merged for user:', username, duplicateWarnings);
+    }
+
+    sendSuccess(res, {
+      message: 'Access saved',
+      user,
+      warnings: duplicateWarnings,
+    });
   } catch (error) {
     next(error);
   }

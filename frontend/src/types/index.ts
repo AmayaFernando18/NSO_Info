@@ -123,6 +123,27 @@ export interface EventDto {
   updatedAt?: string;
 }
 
+export interface PersonalEventDto {
+  id?: string;
+  _id?: string;
+  title: string;
+  description?: string;
+  eventDate: string;
+  endDate?: string | null;
+  ownerUsername: string;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PersonalEventInput {
+  title: string;
+  description?: string;
+  eventDate: string;
+  endDate?: string | null;
+}
+
 export interface HolidayDto {
   date: string;
   title: string;

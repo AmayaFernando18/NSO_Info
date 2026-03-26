@@ -19,6 +19,12 @@ type ListUsersResponse = {
 type SingleUserResponse = {
   success: boolean
   user: RbacUser
+  warnings?: Array<{
+    function: FunctionCode
+    keptAuthority: AuthorityCode
+    discardedAuthorities: AuthorityCode[]
+    totalEntries: number
+  }>
 }
 
 type DeleteResponse = {
@@ -43,9 +49,22 @@ export const fetchUserByEpf = async (epf: string): Promise<RbacUser> => {
   return data.user
 }
 
-export const assignUserAccess = async (payload: AssignPayload): Promise<RbacUser> => {
+export type AssignUserAccessResult = {
+  user: RbacUser
+  warnings: Array<{
+    function: FunctionCode
+    keptAuthority: AuthorityCode
+    discardedAuthorities: AuthorityCode[]
+    totalEntries: number
+  }>
+}
+
+export const assignUserAccess = async (payload: AssignPayload): Promise<AssignUserAccessResult> => {
   const { data } = await api.post<SingleUserResponse>('/users/assign', payload)
-  return data.user
+  return {
+    user: data.user,
+    warnings: data.warnings || [],
+  }
 }
 
 export const removeUserAccess = async (epf: string): Promise<DeleteResponse> => {

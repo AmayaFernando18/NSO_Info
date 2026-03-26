@@ -20,6 +20,7 @@ import PermissionPill from '../../components/admin/PermissionPill'
 import type { AuthorityCode, FunctionCode } from '../../types'
 import { RBAC_FUNCTION, RBAC_FUNCTIONS } from '../../constants/rbac'
 import { useUser } from '../../context/UserContext'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
 
 // Authority descriptions for tooltips
 const AUTHORITY_INFO: Record<AuthorityCode, { label: string; description: string; color: string }> = {
@@ -160,13 +161,23 @@ export default function UsersManagementPage() {
       setSubmitting(true)
       setError('')
 
-      await assignUserAccess({
+      const result = await assignUserAccess({
         username: formUsername.trim(),
         isSuperAdmin: formIsSuperAdmin,
         functionPermissions: formIsSuperAdmin ? [] : formPermissions,
       })
 
-      setSuccess(editingUser ? `User "${formUsername}" updated successfully.` : `User "${formUsername}" added successfully.`)
+      const duplicateMessage =
+        result.warnings.length > 0
+          ? ` Duplicates merged: ${result.warnings
+              .map((w) => `${w.function} (${w.discardedAuthorities.join(', ')} -> ${w.keptAuthority})`)
+              .join('; ')}.`
+          : ''
+
+      setSuccess(
+        (editingUser ? `User "${formUsername}" updated successfully.` : `User "${formUsername}" added successfully.`) +
+          duplicateMessage
+      )
       closeModal()
       await loadUsers()
     } catch (err: any) {
@@ -208,25 +219,22 @@ export default function UsersManagementPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-secondary flex items-center gap-2">
-            <ShieldCheck className="h-7 w-7 text-primary" />
-            User Access Management
-          </h2>
-          <p className="text-gray-600 text-sm mt-1">Manage RBAC permissions for system users</p>
-        </div>
-        {isSuperAdmin && (
-          <button
-            onClick={openAddModal}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-accent text-white rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all font-medium"
-          >
-            <Plus className="h-4 w-4" />
-            Add User
-          </button>
-        )}
-      </div>
+      <AdminPageHeader
+        title="User Access Management"
+        subtitle="Manage RBAC permissions for system users"
+        icon={ShieldCheck}
+        actions={
+          isSuperAdmin ? (
+            <button
+              onClick={openAddModal}
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-accent text-white rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all font-medium"
+            >
+              <Plus className="h-4 w-4" />
+              Add User
+            </button>
+          ) : null
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

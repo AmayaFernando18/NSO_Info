@@ -3,9 +3,34 @@ import { ShieldCheck, Newspaper, Image, Users, ArrowRight, Sparkles, Calendar } 
 import { canPerformAction } from '../../utils/rbac'
 import { RBAC_FUNCTION } from '../../constants/rbac'
 import { Link } from 'react-router-dom'
+import type { FunctionPermission } from '../../types'
+
+const AUTHORITY_RANK: Record<string, number> = {
+  C: 1,
+  E: 2,
+  A: 3,
+  M: 4,
+}
 
 export default function AdminOverviewPage() {
   const { user } = useUser()
+  const permissions = user && Array.isArray(user.functionPermissions) ? user.functionPermissions : []
+
+  const uniquePermissions = permissions.reduce<FunctionPermission[]>((acc, perm) => {
+    const existingIndex = acc.findIndex((p) => p.function === perm.function)
+    if (existingIndex === -1) {
+      acc.push(perm)
+      return acc
+    }
+
+    const existingRank = AUTHORITY_RANK[acc[existingIndex].authority] || 0
+    const incomingRank = AUTHORITY_RANK[perm.authority] || 0
+    if (incomingRank > existingRank) {
+      acc[existingIndex] = perm
+    }
+
+    return acc
+  }, [])
 
   const cards = [
     {
@@ -150,8 +175,8 @@ export default function AdminOverviewPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {user?.functionPermissions && user.functionPermissions.length > 0 ? (
-                    user.functionPermissions.map((perm) => (
+                  {uniquePermissions && uniquePermissions.length > 0 ? (
+                    uniquePermissions.map((perm) => (
                       <div 
                         key={perm.function} 
                         className="group flex items-center gap-4 p-4 bg-gradient-to-r from-accent/10 to-primary/10 rounded-xl border border-accent/20 hover:border-accent hover:shadow-lg transition-all duration-300"

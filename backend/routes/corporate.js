@@ -159,12 +159,12 @@ router.get('/categories', getPublicCategories);
  *       200:
  *         description: List of corporate members
  */
-router.get('/admin/list', authenticate, requireAction('check', FUNCTION_NAME), getAdminMembers);
+router.get('/admin/list', authenticate, requireAction('view', FUNCTION_NAME), getAdminMembers);
 
 router.get(
   '/categories/admin',
   authenticate,
-  requireAction('check', FUNCTION_NAME),
+  requireAction('view', FUNCTION_NAME),
   getAdminCategories
 );
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useUser } from '../../context/UserContext'
 import { canPerformAction } from '../../utils/rbac'
 import { RBAC_FUNCTION } from '../../constants/rbac'
-import { AlertCircle, ArrowDown, ArrowUp, CheckCircle2, Loader2, Upload, X, Trash2, Pencil, Save, RotateCcw, Phone, Mail } from 'lucide-react'
+import { AlertCircle, ArrowDown, ArrowUp, CheckCircle2, Loader2, Upload, X, Trash2, Pencil, Save, RotateCcw, Phone, Mail, Users } from 'lucide-react'
 import {
   createCorporateMember,
   createCorporateCategory,
@@ -20,6 +20,8 @@ import {
 } from '../../services/corporateService'
 import type { CorporateCategoryDto, CorporateMemberDto } from '../../types'
 import { resolveMediaUrl } from '../../utils/media'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
+import { hasFieldErrors, parseApiValidationErrors, validateCorporateMemberForm } from '../../utils/adminValidation'
 
 type CorporateFormState = {
   name: string
@@ -88,12 +90,32 @@ export default function CorporateManagementPage() {
   const [success, setSuccess] = useState('')
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({})
   const [showDeletedTab, setShowDeletedTab] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof CorporateFormState, string>>>({})
+  const [editFieldErrors, setEditFieldErrors] = useState<Partial<Record<keyof CorporateFormState, string>>>({})
 
-  // Edit modal state
+  // Edit panel state
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<CorporateMemberDto | null>(null)
   const [editForm, setEditForm] = useState<CorporateFormState>(createInitialFormState)
   const [editUploading, setEditUploading] = useState(false)
+  const [closingPanel, setClosingPanel] = useState(false)
+
+  // Auto-dismiss success
+  useEffect(() => {
+    if (!success) return
+    const timer = setTimeout(() => setSuccess(''), 4000)
+    return () => clearTimeout(timer)
+  }, [success])
+
+  const closeEditPanel = () => {
+    setClosingPanel(true)
+    setTimeout(() => {
+      setEditModalOpen(false)
+      setEditingItem(null)
+      setClosingPanel(false)
+      setEditFieldErrors({})
+    }, 250)
+  }
 
   const loadMembers = async () => {
     try {
@@ -140,6 +162,12 @@ export default function CorporateManagementPage() {
 
   const handleChange = (field: keyof CorporateFormState, value: string | number | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }))
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
   }
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -151,6 +179,12 @@ export default function CorporateManagementPage() {
       setError('')
       const imageUrl = await uploadCorporateImage(file)
       setForm((prev) => ({ ...prev, imageUrl }))
+      setFieldErrors((prev) => {
+        if (!prev.imageUrl) return prev
+        const next = { ...prev }
+        delete next.imageUrl
+        return next
+      })
       setSuccess('Image uploaded successfully.')
     } catch (err: any) {
       const message = err?.response?.data?.error || err?.response?.data?.message || 'Image upload failed.'
@@ -163,25 +197,29 @@ export default function CorporateManagementPage() {
 
   const resetForm = () => {
     setForm(createInitialFormState())
+    setFieldErrors({})
   }
+
+  const inputClassName = (hasError: boolean) =>
+    `w-full px-3.5 py-2.5 bg-white border rounded-xl text-sm focus:outline-none focus:ring-2 transition ${
+      hasError ? 'border-red-300 focus:ring-red-200 focus:border-red-400' : 'border-gray-200 focus:ring-primary/30 focus:border-primary'
+    }`
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     setError('')
     setSuccess('')
+    setFieldErrors({})
 
     if (!canCreate) {
       setError('You do not have permission to create corporate members.')
       return
     }
 
-    if (!form.name.trim() || !form.position.trim() || !form.phone.trim() || !form.email.trim()) {
-      setError('Name, position, phone, and email are required.')
-      return
-    }
-
-    if (!form.categoryId) {
-      setError('Category is required.')
+    const validationErrors = validateCorporateMemberForm(form)
+    if (hasFieldErrors(validationErrors)) {
+      setFieldErrors(validationErrors as Partial<Record<keyof CorporateFormState, string>>)
+      setError('Please correct the highlighted fields and try again.')
       return
     }
 
@@ -202,8 +240,9 @@ export default function CorporateManagementPage() {
       setSuccess('Corporate member created successfully.')
       resetForm()
     } catch (err: any) {
-      const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to create corporate member.'
-      setError(message)
+      const parsed = parseApiValidationErrors(err)
+      setFieldErrors(parsed.fieldErrors as Partial<Record<keyof CorporateFormState, string>>)
+      setError(parsed.message || 'Failed to create corporate member.')
       console.error(err)
     } finally {
       setSubmitting(false)
@@ -330,6 +369,12 @@ export default function CorporateManagementPage() {
 
   const handleEditChange = (field: keyof CorporateFormState, value: string | number | boolean) => {
     setEditForm((prev) => ({ ...prev, [field]: value }))
+    setEditFieldErrors((prev) => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
   }
 
   const handleEditImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -341,6 +386,12 @@ export default function CorporateManagementPage() {
       setError('')
       const imageUrl = await uploadCorporateImage(file)
       setEditForm((prev) => ({ ...prev, imageUrl }))
+      setEditFieldErrors((prev) => {
+        if (!prev.imageUrl) return prev
+        const next = { ...prev }
+        delete next.imageUrl
+        return next
+      })
       setSuccess('Image uploaded successfully.')
     } catch (err: any) {
       const message = err?.response?.data?.error || err?.response?.data?.message || 'Image upload failed.'
@@ -459,13 +510,11 @@ export default function CorporateManagementPage() {
     const itemId = editingItem.id || editingItem._id
     if (!itemId) return
 
-    if (!editForm.name.trim() || !editForm.position.trim() || !editForm.phone.trim() || !editForm.email.trim()) {
-      setError('Name, position, phone, and email are required.')
-      return
-    }
-
-    if (!editForm.categoryId) {
-      setError('Category is required.')
+    setEditFieldErrors({})
+    const validationErrors = validateCorporateMemberForm(editForm)
+    if (hasFieldErrors(validationErrors)) {
+      setEditFieldErrors(validationErrors as Partial<Record<keyof CorporateFormState, string>>)
+      setError('Please correct the highlighted fields before saving.')
       return
     }
 
@@ -486,11 +535,11 @@ export default function CorporateManagementPage() {
         prev.map((item) => ((item.id || item._id) === itemId ? updated : item))
       )
       setSuccess('Corporate member updated successfully.')
-      setEditModalOpen(false)
-      setEditingItem(null)
+      closeEditPanel()
     } catch (err: any) {
-      const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to update member.'
-      setError(message)
+      const parsed = parseApiValidationErrors(err)
+      setEditFieldErrors(parsed.fieldErrors as Partial<Record<keyof CorporateFormState, string>>)
+      setError(parsed.message || 'Failed to update member.')
       console.error(err)
     } finally {
       setActionLoading((prev) => ({ ...prev, [itemId]: false }))
@@ -512,37 +561,28 @@ export default function CorporateManagementPage() {
   return (
     <div className="min-h-screen bg-base">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8 rounded-2xl border border-border bg-white px-6 py-5 shadow-sm">
-          <h1 className="text-3xl font-bold text-secondary">Corporate Members Management</h1>
-          <p className="mt-2 text-sm text-gray-600">Create, edit, reorder, and manage leadership profiles with a modern publishing workflow.</p>
-        </div>
+        <AdminPageHeader
+          title="Corporate Members Management"
+          subtitle="Create, edit, reorder, and manage leadership profiles."
+          icon={Users}
+        />
 
         {/* Alerts */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-red-800">{error}</p>
-            </div>
-            <button
-              onClick={() => setError('')}
-              className="text-red-400 hover:text-red-600"
-            >
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 animate-in fade-in">
+            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+            <p className="flex-1 text-sm font-medium text-red-700">{error}</p>
+            <button onClick={() => setError('')} className="text-red-400 hover:text-red-600 transition-colors">
               <X className="h-4 w-4" />
             </button>
           </div>
         )}
 
         {success && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-green-800">{success}</p>
-            </div>
-            <button
-              onClick={() => setSuccess('')}
-              className="text-green-400 hover:text-green-600"
-            >
+          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3 animate-in fade-in">
+            <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+            <p className="flex-1 text-sm font-medium text-emerald-700">{success}</p>
+            <button onClick={() => setSuccess('')} className="text-emerald-400 hover:text-emerald-600 transition-colors">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -553,471 +593,335 @@ export default function CorporateManagementPage() {
           {!showDeletedTab && (
             <div className="lg:col-span-1">
               <div className="space-y-6">
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Categories</h2>
+                <div className="rounded-2xl border border-border bg-white shadow-sm overflow-hidden">
+                  <div className="px-5 py-4 border-b border-border bg-gradient-to-r from-primary/5 to-accent/5">
+                    <h2 className="text-lg font-bold text-secondary">Categories</h2>
+                  </div>
 
-                  <form onSubmit={handleCategorySubmit} className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Category Name *</label>
+                  <div className="p-5">
+                    <form onSubmit={handleCategorySubmit} className="space-y-3 mb-5">
                       <input
                         type="text"
                         value={categoryForm.name}
                         onChange={(e) => handleCategoryChange('name', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="Board of Directors"
+                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
+                        placeholder="e.g. Board of Directors"
                       />
-                    </div>
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={categoryForm.activeStatus}
+                            onChange={(e) => handleCategoryChange('activeStatus', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/30"
+                          />
+                          <span className="text-sm text-gray-600">Active</span>
+                        </label>
+                        <button
+                          type="submit"
+                          disabled={categorySubmitting}
+                          className="px-4 py-2 bg-secondary text-white text-sm font-medium rounded-xl hover:bg-secondary/90 disabled:bg-gray-300 transition-all flex items-center gap-1.5"
+                        >
+                          {categorySubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                          {categorySubmitting ? 'Adding...' : 'Add'}
+                        </button>
+                      </div>
+                    </form>
 
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="categoryActiveStatus"
-                        checked={categoryForm.activeStatus}
-                        onChange={(e) => handleCategoryChange('activeStatus', e.target.checked)}
-                        className="h-4 w-4 border-gray-300 rounded"
-                      />
-                      <label htmlFor="categoryActiveStatus" className="text-sm text-gray-700">
-                        Active
-                      </label>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={categorySubmitting}
-                      className="w-full bg-secondary text-white py-2 rounded-lg hover:bg-secondary/90 disabled:bg-gray-400 transition flex items-center justify-center gap-2"
-                    >
-                      {categorySubmitting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Creating...
-                        </>
+                    <div className="space-y-2">
+                      {orderedCategories.length === 0 ? (
+                        <p className="text-sm text-gray-400 text-center py-4">No categories yet.</p>
                       ) : (
-                        'Add Category'
-                      )}
-                    </button>
-                  </form>
+                        orderedCategories.map((category) => {
+                          const id = category.id || category._id || ''
+                          const isEditing = categoryEditingId === id
+                          const isBusy = Boolean(id && actionLoading[id])
 
-                  <div className="mt-5 space-y-3">
-                    {orderedCategories.length === 0 ? (
-                      <p className="text-sm text-gray-500">No categories yet.</p>
-                    ) : (
-                      orderedCategories.map((category) => {
-                        const id = category.id || category._id || ''
-                        const isEditing = categoryEditingId === id
-                        const isBusy = Boolean(id && actionLoading[id])
-
-                        return (
-                          <div key={id} className="rounded-lg border border-border px-3 py-3">
-                            {isEditing ? (
-                              <div className="space-y-2">
-                                <input
-                                  type="text"
-                                  value={categoryEditForm.name}
-                                  onChange={(e) => setCategoryEditForm((prev) => ({ ...prev, name: e.target.value }))}
-                                  className="w-full px-2 py-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                                />
-                                <div className="flex items-center gap-2">
+                          return (
+                            <div key={id} className={`rounded-xl border px-4 py-3 transition-all ${isEditing ? 'border-primary/40 bg-primary/[0.03] shadow-sm' : 'border-gray-100 bg-gray-50/50 hover:border-gray-200'}`}>
+                              {isEditing ? (
+                                <div className="space-y-3">
                                   <input
-                                    type="checkbox"
-                                    id={`categoryActive-${id}`}
-                                    checked={categoryEditForm.activeStatus}
-                                    onChange={(e) =>
-                                      setCategoryEditForm((prev) => ({ ...prev, activeStatus: e.target.checked }))
-                                    }
-                                    className="h-4 w-4 border-gray-300 rounded"
+                                    type="text"
+                                    value={categoryEditForm.name}
+                                    onChange={(e) => setCategoryEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
                                   />
-                                  <label htmlFor={`categoryActive-${id}`} className="text-xs text-gray-600">
-                                    Active
+                                  <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={categoryEditForm.activeStatus}
+                                      onChange={(e) => setCategoryEditForm((prev) => ({ ...prev, activeStatus: e.target.checked }))}
+                                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/30"
+                                    />
+                                    <span className="text-xs text-gray-600">Active</span>
                                   </label>
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={handleCategoryEditSubmit}
+                                      disabled={isBusy}
+                                      className="flex-1 bg-primary text-white py-2 rounded-lg text-sm font-medium hover:bg-primary/90 disabled:bg-gray-300 transition"
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setCategoryEditingId('')}
+                                      className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="flex gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={handleCategoryEditSubmit}
-                                    disabled={isBusy}
-                                    className="flex-1 bg-primary text-white py-1.5 rounded-lg text-sm hover:bg-primary/90 disabled:bg-gray-400 transition"
-                                  >
-                                    Save
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setCategoryEditingId('')}
-                                    className="flex-1 bg-gray-100 text-gray-700 py-1.5 rounded-lg text-sm hover:bg-gray-200 transition"
-                                  >
-                                    Cancel
-                                  </button>
+                              ) : (
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <span className={`h-2 w-2 rounded-full flex-shrink-0 ${category.activeStatus ? 'bg-emerald-400' : 'bg-gray-300'}`} />
+                                    <span className="text-sm font-medium text-gray-800 truncate">{category.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <button type="button" onClick={() => handleCategoryEditClick(category)} className="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/5 transition" title="Edit">
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button type="button" onClick={() => id && handleCategoryDelete(id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition" title="Delete" disabled={isBusy}>
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-between gap-2">
-                                <div>
-                                  <p className="text-sm font-semibold text-gray-800">{category.name}</p>
-                                  <span className={`text-xs ${category.activeStatus ? 'text-green-600' : 'text-gray-400'}`}>
-                                    {category.activeStatus ? 'Active' : 'Inactive'}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleCategoryEditClick(category)}
-                                    className="text-gray-500 hover:text-primary"
-                                    title="Edit"
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => id && handleCategoryDelete(id)}
-                                    className="text-gray-500 hover:text-red-600"
-                                    title="Delete"
-                                    disabled={isBusy}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })
-                    )}
+                              )}
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                    {editModalOpen ? 'Edit Member' : 'Add New Member'}
-                  </h2>
-
-                  {!editModalOpen ? (
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                      <input
-                        type="text"
-                        value={form.name}
-                        onChange={(e) => handleChange('name', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="Full name"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Position *</label>
-                      <input
-                        type="text"
-                        value={form.position}
-                        onChange={(e) => handleChange('position', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="e.g. Chairman, CEO, Director"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                      <select
-                        value={form.categoryId}
-                        onChange={(e) => handleChange('categoryId', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        disabled={selectableCategories.length === 0}
-                      >
-                        <option value="" disabled>
-                          Select a category
-                        </option>
-                        {selectableCategories.map((category) => (
-                          <option key={category.id || category._id} value={category.id || category._id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                      {selectableCategories.length === 0 && (
-                        <p className="mt-1 text-xs text-gray-500">Add a category to assign members.</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
-                      <input
-                        type="tel"
-                        value={form.phone}
-                        onChange={(e) => handleChange('phone', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="+94 11 260 1001"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                      <input
-                        type="email"
-                        value={form.email}
-                        onChange={(e) => handleChange('email', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="email@nso.lk"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Image URL or Upload</label>
-                      <div className="flex gap-2 mb-2">
-                        <input
-                          type="text"
-                          value={form.imageUrl}
-                          onChange={(e) => handleChange('imageUrl', e.target.value)}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                          placeholder="https://example.com/image.jpg"
-                        />
-                      </div>
-                      <label className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:border-primary transition">
-                        <Upload className="h-4 w-4" />
-                        <span className="text-sm text-gray-600">Upload Image</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          disabled={uploadingImage}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-
-                    {form.imageUrl && (
-                      <div className="mb-2">
-                        <img
-                          src={resolveMediaUrl(form.imageUrl)}
-                          alt="Preview"
-                          className="w-full h-32 object-cover rounded-lg"
-                        />
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="activeStatus"
-                        checked={form.activeStatus}
-                        onChange={(e) => handleChange('activeStatus', e.target.checked)}
-                        className="h-4 w-4 border-gray-300 rounded"
-                      />
-                      <label htmlFor="activeStatus" className="text-sm text-gray-700">
-                        Active
-                      </label>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={submitting || uploadingImage || selectableCategories.length === 0}
-                      className="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary/90 disabled:bg-gray-400 transition flex items-center justify-center gap-2"
-                    >
-                      {submitting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Creating...
-                        </>
-                      ) : (
-                        'Create Member'
-                      )}
-                    </button>
-                  </form>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-gray-600 mb-4">Edit mode open in list</p>
-                    <button
-                      onClick={() => setEditModalOpen(false)}
-                      className="text-primary hover:underline text-sm"
-                    >
-                      Close Edit Modal
-                    </button>
+                <div className="rounded-2xl border border-border bg-white shadow-sm overflow-hidden">
+                  <div className="px-5 py-4 border-b border-border bg-gradient-to-r from-primary/5 to-accent/5">
+                    <h2 className="text-lg font-bold text-secondary">Add New Member</h2>
                   </div>
-                )}
-              </div>
+
+                  <div className="p-5">
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      
+                      <div className="space-y-4 p-4 bg-gray-50/50 rounded-xl border border-gray-100">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Full Name *</label>
+                          <input
+                            type="text"
+                            value={form.name}
+                            onChange={(e) => handleChange('name', e.target.value)}
+                            className={inputClassName(Boolean(fieldErrors.name))}
+                            placeholder="e.g. Dr. Jane Smith"
+                          />
+                          {fieldErrors.name ? <p className="mt-1.5 text-xs text-red-600">{fieldErrors.name}</p> : null}
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Position *</label>
+                          <input
+                            type="text"
+                            value={form.position}
+                            onChange={(e) => handleChange('position', e.target.value)}
+                            className={inputClassName(Boolean(fieldErrors.position))}
+                            placeholder="e.g. Chief Executive Officer"
+                          />
+                          {fieldErrors.position ? <p className="mt-1.5 text-xs text-red-600">{fieldErrors.position}</p> : null}
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Category *</label>
+                          <select
+                            value={form.categoryId}
+                            onChange={(e) => handleChange('categoryId', e.target.value)}
+                            className={inputClassName(Boolean(fieldErrors.categoryId))}
+                            disabled={selectableCategories.length === 0}
+                          >
+                            <option value="" disabled>Select a category</option>
+                            {selectableCategories.map((category) => (
+                              <option key={category.id || category._id} value={category.id || category._id}>
+                                {category.name}
+                              </option>
+                            ))}
+                          </select>
+                          {fieldErrors.categoryId ? <p className="mt-1.5 text-xs text-red-600">{fieldErrors.categoryId}</p> : null}
+                          {selectableCategories.length === 0 && (
+                            <p className="mt-1.5 text-xs text-amber-600 font-medium">Please add a category first.</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 p-4 bg-gray-50/50 rounded-xl border border-gray-100">
+                        <div>
+                          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                            <Phone className="h-3 w-3" /> Phone *
+                          </label>
+                          <input
+                            type="tel"
+                            value={form.phone}
+                            onChange={(e) => handleChange('phone', e.target.value)}
+                            className={inputClassName(Boolean(fieldErrors.phone))}
+                            placeholder="+94 11 260 1001"
+                          />
+                          {fieldErrors.phone ? <p className="mt-1.5 text-xs text-red-600">{fieldErrors.phone}</p> : null}
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                            <Mail className="h-3 w-3" /> Email *
+                          </label>
+                          <input
+                            type="email"
+                            value={form.email}
+                            onChange={(e) => handleChange('email', e.target.value)}
+                            className={inputClassName(Boolean(fieldErrors.email))}
+                            placeholder="director@nso.lk"
+                          />
+                          {fieldErrors.email ? <p className="mt-1.5 text-xs text-red-600">{fieldErrors.email}</p> : null}
+                        </div>
+                      </div>
+
+                      <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-100">
+                        <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Profile Photo</label>
+                        
+                        {form.imageUrl ? (
+                          <div className="relative mb-3 group">
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded-lg transition-opacity flex items-center justify-center">
+                              <span className="text-white text-xs font-medium">Click to change</span>
+                            </div>
+                            <img
+                              src={resolveMediaUrl(form.imageUrl)}
+                              alt="Preview"
+                              className="w-full h-40 object-cover rounded-lg border border-gray-200"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleChange('imageUrl', '')}
+                              className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-white hover:bg-gray-50 hover:border-primary/50 transition-colors mb-3">
+                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                              <Upload className="w-6 h-6 mb-2 text-gray-400" />
+                              <p className="text-sm text-gray-500"><span className="font-medium text-primary">Click to upload</span> or drag</p>
+                            </div>
+                            <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={uploadingImage} />
+                          </label>
+                        )}
+                        
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={form.imageUrl}
+                            onChange={(e) => handleChange('imageUrl', e.target.value)}
+                            className={`flex-1 px-3 py-2 bg-white border rounded-lg text-xs focus:outline-none focus:ring-2 transition ${fieldErrors.imageUrl ? 'border-red-300 focus:ring-red-200 focus:border-red-400' : 'border-gray-200 focus:ring-primary/30 focus:border-primary'}`}
+                            placeholder="Or paste image URL"
+                          />
+                        </div>
+                        {fieldErrors.imageUrl ? <p className="mt-1.5 text-xs text-red-600">{fieldErrors.imageUrl}</p> : null}
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-xl border border-gray-100">
+                        <div>
+                          <p className="text-sm font-medium text-gray-800">Profile Status</p>
+                          <p className="text-xs text-gray-500">Publicly visible on site</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={form.activeStatus}
+                            onChange={(e) => handleChange('activeStatus', e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={submitting || uploadingImage || selectableCategories.length === 0}
+                        className="w-full bg-primary text-white py-3 rounded-xl font-medium hover:bg-primary/90 hover:shadow-lg disabled:bg-gray-300 disabled:shadow-none transition-all flex items-center justify-center gap-2"
+                      >
+                        {submitting || uploadingImage ? (
+                          <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</>
+                        ) : (
+                          'Create Member Profile'
+                        )}
+                      </button>
+                    </form>
+                  </div>
+                </div>
             </div>
           </div>
           )}
 
           {/* Members List */}
           <div className={showDeletedTab ? 'lg:col-span-3' : 'lg:col-span-2'}>
-            <div className="bg-white rounded-lg shadow">
-              <div className="border-b px-6 py-4 flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-primary/5 to-accent/5">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {showDeletedTab ? 'Deleted Members' : 'Active Members'}
+            <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
+              <div className="border-b border-border px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-primary/5 to-accent/5">
+                <h2 className="text-lg font-bold text-secondary">
+                  {showDeletedTab ? 'Deleted Profiles' : 'Active Profiles'}
                 </h2>
-                <div className="flex gap-2">
+                <div className="flex p-0.5 bg-gray-100 rounded-xl">
                   <button
                     onClick={() => setShowDeletedTab(false)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                      !showDeletedTab
-                        ? 'bg-primary text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                      !showDeletedTab ? 'text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    Active ({members.length})
+                    {!showDeletedTab && (
+                      <div className="absolute inset-0 bg-primary rounded-lg transition-all duration-300" />
+                    )}
+                    <span className="relative flex items-center gap-2">
+                      Active
+                      <span className={`px-1.5 py-0.5 rounded-md text-[10px] uppercase font-bold tracking-wider ${!showDeletedTab ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                        {members.length}
+                      </span>
+                    </span>
                   </button>
                   <button
                     onClick={() => setShowDeletedTab(true)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                      showDeletedTab
-                        ? 'bg-primary text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                      showDeletedTab ? 'text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    Deleted ({deletedMembers.length})
+                    {showDeletedTab && (
+                      <div className="absolute inset-0 bg-red-600 rounded-lg transition-all duration-300" />
+                    )}
+                    <span className="relative flex items-center gap-2">
+                      Deleted
+                      <span className={`px-1.5 py-0.5 rounded-md text-[10px] uppercase font-bold tracking-wider ${showDeletedTab ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                        {deletedMembers.length}
+                      </span>
+                    </span>
                   </button>
                 </div>
               </div>
 
-              {editModalOpen && editingItem && (
-                <div className="border-b px-6 py-4 bg-blue-50">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                      <input
-                        type="text"
-                        value={editForm.name}
-                        onChange={(e) => handleEditChange('name', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="Full name"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Position *</label>
-                      <input
-                        type="text"
-                        value={editForm.position}
-                        onChange={(e) => handleEditChange('position', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="e.g. Chairman, CEO, Director"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                      <select
-                        value={editForm.categoryId}
-                        onChange={(e) => handleEditChange('categoryId', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                      >
-                        <option value="">Uncategorized</option>
-                        {selectableCategories.map((category) => (
-                          <option key={category.id || category._id} value={category.id || category._id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
-                      <input
-                        type="tel"
-                        value={editForm.phone}
-                        onChange={(e) => handleEditChange('phone', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="+94 11 260 1001"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                      <input
-                        type="email"
-                        value={editForm.email}
-                        onChange={(e) => handleEditChange('email', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="email@nso.lk"
-                      />
-                    </div>
-
-                  </div>
-
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Image URL or Upload</label>
-                    <div className="flex gap-2 mb-2">
-                      <input
-                        type="text"
-                        value={editForm.imageUrl}
-                        onChange={(e) => handleEditChange('imageUrl', e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="https://example.com/image.jpg"
-                      />
-                    </div>
-                    <label className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:border-primary transition">
-                      <Upload className="h-4 w-4" />
-                      <span className="text-sm text-gray-600">Upload Image</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleEditImageUpload}
-                        disabled={editUploading}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-
-                  {editForm.imageUrl && (
-                    <div className="mb-4">
-                      <img
-                        src={resolveMediaUrl(editForm.imageUrl)}
-                        alt="Preview"
-                        className="h-32 object-cover rounded-lg"
-                      />
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2 mb-4">
-                    <input
-                      type="checkbox"
-                      id="editActiveStatus"
-                      checked={editForm.activeStatus}
-                      onChange={(e) => handleEditChange('activeStatus', e.target.checked)}
-                      className="h-4 w-4 border-gray-300 rounded"
-                    />
-                    <label htmlFor="editActiveStatus" className="text-sm text-gray-700">
-                      Active
-                    </label>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleEditSubmit}
-                      disabled={!editingMemberId || actionLoading[editingMemberId]}
-                      className="flex-1 bg-primary text-white py-2 rounded-lg hover:bg-primary/90 disabled:bg-gray-400 transition flex items-center justify-center gap-2"
-                    >
-                      {editingMemberId && actionLoading[editingMemberId] ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4" />
-                          Save Changes
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditModalOpen(false)
-                        setEditingItem(null)
-                      }}
-                      className="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 transition"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-
               <div className="p-6">
                 {!showDeletedTab && orderedMembers.length > 1 && (
-                  <div className="mb-5 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-gray-700">
-                    Use the arrow controls to reorder members. Top items appear first in public profile listings.
+                  <div className="mb-6 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-start gap-3">
+                    <div className="p-1.5 bg-white rounded-lg border border-primary/10 shadow-sm mt-0.5">
+                      <ArrowUp className="h-3 w-3 text-primary" />
+                    </div>
+                    <p className="text-sm text-gray-700">
+                      Use the arrows on the right of each card to reorder members. Higher members appear first on public profiles.
+                    </p>
                   </div>
                 )}
+                
                 {currentList.length === 0 ? (
-                  <div className="py-8 text-center text-gray-600">
-                    <p>No corporate members found</p>
+                  <div className="py-12 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mx-auto mb-3">
+                      <Users className="h-6 w-6 text-gray-400" />
+                    </div>
+                    <p className="text-gray-500 font-medium">No corporate members found</p>
+                    <p className="text-xs text-gray-400 mt-1">Add a new member profile to see them listed here.</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -1040,143 +944,141 @@ export default function CorporateManagementPage() {
                         return (
                           <div
                             key={id || `${item.email}-${index}`}
-                            className="rounded-xl border border-border bg-white shadow-sm transition-all hover:border-primary/20 hover:shadow-md animate-card-in"
-                            style={{ animationDelay: `${index * 70}ms` }}
+                            className="group relative rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:border-primary/20 hover:shadow-md animate-card-in overflow-hidden"
+                            style={{ animationDelay: `${index * 60}ms` }}
                           >
-                            <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between bg-gray-50/60 rounded-t-xl">
-                              <div className="flex items-center gap-2.5">
-                                {!showDeletedTab && (
-                                  <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                                    Order #{orderValue}
-                                  </span>
-                                )}
-                                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                                  item.activeStatus ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
-                                }`}>
-                                  {item.activeStatus ? 'Active' : 'Inactive'}
-                                </span>
-                                {showDeletedTab && (
-                                  <span className="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700">
-                                    Deleted
-                                  </span>
-                                )}
-                              </div>
-
-                              {!showDeletedTab && canEdit && (
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={() => void moveMember(index, 'up')}
-                                    disabled={index === 0 || reordering}
-                                    className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-white text-gray-600 border border-border hover:bg-gray-50 disabled:opacity-40"
-                                    title="Move Up"
-                                  >
-                                    <ArrowUp className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => void moveMember(index, 'down')}
-                                    disabled={index === orderedMembers.length - 1 || reordering}
-                                    className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-white text-gray-600 border border-border hover:bg-gray-50 disabled:opacity-40"
-                                    title="Move Down"
-                                  >
-                                    <ArrowDown className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="p-4">
-                              <div className="flex flex-col sm:flex-row gap-4 sm:items-start">
-                                <div className="flex items-center gap-4 min-w-0 sm:w-[340px]">
+                            <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-gradient-to-b from-primary/80 to-accent/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            
+                            <div className="p-5">
+                              <div className="flex flex-col md:flex-row gap-5 items-start">
+                                {/* Details column */}
+                                <div className="flex items-center gap-4 flex-1 min-w-0">
                                   {item.imageUrl ? (
-                                    <img
-                                      src={resolveMediaUrl(item.imageUrl)}
-                                      alt={item.name}
-                                      className="h-20 w-20 rounded-full object-cover ring-4 ring-primary/10 flex-shrink-0"
-                                    />
+                                    <div className="relative">
+                                      <img
+                                        src={resolveMediaUrl(item.imageUrl)}
+                                        alt={item.name}
+                                        className="h-[84px] w-[84px] rounded-2xl object-cover ring-1 ring-gray-100 shadow-sm flex-shrink-0"
+                                      />
+                                      <div className={`absolute -bottom-1.5 -right-1.5 h-4 w-4 rounded-full border-2 border-white ${item.activeStatus ? 'bg-emerald-500' : 'bg-gray-300'}`} title={item.activeStatus ? 'Active' : 'Inactive'} />
+                                    </div>
                                   ) : (
-                                    <div className="h-20 w-20 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 text-slate-700 ring-4 ring-primary/10 flex items-center justify-center font-semibold text-xl flex-shrink-0">
-                                      {getInitials(item.name || '')}
+                                    <div className="relative">
+                                      <div className="h-[84px] w-[84px] rounded-2xl bg-gradient-to-br from-primary/10 to-accent/5 text-primary ring-1 ring-primary/10 flex items-center justify-center font-bold text-2xl shadow-sm flex-shrink-0">
+                                        {getInitials(item.name || '')}
+                                      </div>
+                                      <div className={`absolute -bottom-1.5 -right-1.5 h-4 w-4 rounded-full border-2 border-white ${item.activeStatus ? 'bg-emerald-500' : 'bg-gray-300'}`} title={item.activeStatus ? 'Active' : 'Inactive'} />
                                     </div>
                                   )}
 
-                                  <div className="min-w-0">
-                                    <h3 className="text-lg font-semibold text-secondary truncate">{item.name}</h3>
+                                  <div className="min-w-0 flex-1">
+                                    <h3 className="text-base font-bold text-secondary truncate">{item.name}</h3>
                                     <p className="text-sm font-medium text-primary mt-0.5 truncate">{item.position}</p>
-                                    <span className="mt-2 inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                                      {categoryLabel}
-                                    </span>
+                                    
+                                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                                      <span className="inline-flex items-center rounded-lg bg-gray-100 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-gray-700 uppercase">
+                                        {categoryLabel}
+                                      </span>
+                                      {showDeletedTab && (
+                                        <span className="inline-flex items-center rounded-lg bg-red-100 px-2.5 py-1 text-[11px] font-bold tracking-wide text-red-700 uppercase">
+                                          Deleted
+                                        </span>
+                                      )}
+                                      {!showDeletedTab && (
+                                        <span className="inline-flex items-center rounded-lg bg-primary/10 px-2.5 py-1 text-[11px] font-bold tracking-wide text-primary uppercase">
+                                          Order #{orderValue}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
 
-                                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2.5 text-sm text-gray-700">
-                                  <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-base px-3 py-2 min-w-0">
-                                    <Phone className="h-4 w-4 text-primary flex-shrink-0" />
-                                    <span className="truncate">{item.phone}</span>
+                                {/* Contact info & Actions column */}
+                                <div className="flex flex-col gap-3 w-full md:w-auto md:min-w-[280px]">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-2 text-[13px] text-gray-600">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                                        <Phone className="h-3 w-3 text-primary" />
+                                      </div>
+                                      <span className="truncate">{item.phone}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                                        <Mail className="h-3 w-3 text-primary" />
+                                      </div>
+                                      <span className="truncate">{item.email}</span>
+                                    </div>
                                   </div>
-                                  <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-base px-3 py-2 min-w-0">
-                                    <Mail className="h-4 w-4 text-primary flex-shrink-0" />
-                                    <span className="truncate">{item.email}</span>
+
+                                  <div className="flex items-center justify-end gap-2 pt-2 mt-auto">
+                                    {!showDeletedTab ? (
+                                      <>
+                                        {canEdit && (
+                                          <div className="flex items-center bg-white rounded-lg p-1 border border-primary/20 shadow-sm mr-2 opacity-100 transition-opacity">
+                                            <button
+                                              onClick={() => void moveMember(index, 'up')}
+                                              disabled={index === 0 || reordering}
+                                              className="p-1 rounded text-primary/70 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent"
+                                              title="Move Up"
+                                            >
+                                              <ArrowUp className="h-3.5 w-3.5" />
+                                            </button>
+                                            <div className="w-px h-4 bg-gray-200 mx-1" />
+                                            <button
+                                              onClick={() => void moveMember(index, 'down')}
+                                              disabled={index === orderedMembers.length - 1 || reordering}
+                                              className="p-1 rounded text-primary/70 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent"
+                                              title="Move Down"
+                                            >
+                                              <ArrowDown className="h-3.5 w-3.5" />
+                                            </button>
+                                          </div>
+                                        )}
+                                        {canEdit && (
+                                          <button
+                                            onClick={() => handleEditClick(item)}
+                                            className="px-3.5 py-1.5 rounded-lg text-sm font-medium bg-secondary text-white hover:bg-secondary/90 hover:shadow-md transition-all flex items-center gap-1.5"
+                                          >
+                                            <Pencil className="h-3.5 w-3.5" /> Edit
+                                          </button>
+                                        )}
+                                        {canDelete && (
+                                          <button
+                                            onClick={() => id && handleDelete(id)}
+                                            disabled={!id || isBusy}
+                                            className="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition-all disabled:opacity-50"
+                                            title="Delete"
+                                          >
+                                            {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                          </button>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <>
+                                        {canDelete && (
+                                          <button
+                                            onClick={() => id && handleRestore(id)}
+                                            disabled={!id || isBusy}
+                                            className="px-3.5 py-1.5 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                                          >
+                                            {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                                            Restore
+                                          </button>
+                                        )}
+                                        {canDelete && (
+                                          <button
+                                            onClick={() => id && handlePermanentDelete(id)}
+                                            disabled={!id || isBusy}
+                                            className="px-3.5 py-1.5 rounded-lg text-sm font-medium border border-gray-200 text-red-600 hover:bg-red-50 focus:ring-2 focus:ring-red-200 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                                          >
+                                            {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                                            Delete Forever
+                                          </button>
+                                        )}
+                                      </>
+                                    )}
                                   </div>
                                 </div>
-                              </div>
-
-                              <div className="mt-4 pt-3 border-t border-border/60 flex justify-end gap-2">
-                                {!showDeletedTab ? (
-                                  <>
-                                    {canEdit && (
-                                      <button
-                                        onClick={() => handleEditClick(item)}
-                                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
-                                        title="Edit"
-                                      >
-                                        <Pencil className="h-4 w-4" />
-                                        Edit
-                                      </button>
-                                    )}
-                                    {canDelete && (
-                                      <button
-                                        onClick={() => {
-                                          if (id) handleDelete(id)
-                                        }}
-                                        disabled={!id || isBusy}
-                                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700 transition disabled:opacity-50"
-                                        title="Delete"
-                                      >
-                                        {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                        Delete
-                                      </button>
-                                    )}
-                                  </>
-                                ) : (
-                                  <>
-                                    {canDelete && (
-                                      <button
-                                        onClick={() => {
-                                          if (id) handleRestore(id)
-                                        }}
-                                        disabled={!id || isBusy}
-                                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
-                                        title="Restore"
-                                      >
-                                        {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                                        Restore
-                                      </button>
-                                    )}
-                                    {canDelete && (
-                                      <button
-                                        onClick={() => {
-                                          if (id) handlePermanentDelete(id)
-                                        }}
-                                        disabled={!id || isBusy}
-                                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700 transition disabled:opacity-50"
-                                        title="Permanently Delete"
-                                      >
-                                        {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                                        Delete Permanently
-                                      </button>
-                                    )}
-                                  </>
-                                )}
                               </div>
                             </div>
                           </div>
@@ -1190,6 +1092,191 @@ export default function CorporateManagementPage() {
           </div>
         </div>
       </div>
+
+      {/* Edit Slide-over Panel */}
+      {editModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div className="absolute inset-0 bg-secondary/80 backdrop-blur-sm transition-opacity animate-in fade-in duration-300" onClick={closeEditPanel} />
+          <div className="fixed inset-y-0 right-0 max-w-xl w-full flex">
+            <div className={`w-full bg-white shadow-2xl flex flex-col h-full transform transition-transform duration-300 ease-in-out ${closingPanel ? 'translate-x-full' : 'translate-x-0 slide-in-from-right'}`}>
+              
+              <div className="px-6 py-5 border-b border-border bg-gradient-to-r from-primary/5 to-accent/5 flex items-center justify-between sticky top-0 z-10">
+                <div>
+                  <h2 className="text-xl font-bold text-secondary">Edit Member Profile</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">Update leadership details and profile status.</p>
+                </div>
+                <button
+                  onClick={closeEditPanel}
+                  className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-white transition-colors border border-transparent hover:border-gray-200"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-6 space-y-6">
+                  {/* Form fields */}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Full Name *</label>
+                        <input
+                          type="text"
+                          value={editForm.name}
+                          onChange={(e) => handleEditChange('name', e.target.value)}
+                          className={inputClassName(Boolean(editFieldErrors.name))}
+                          placeholder="Full name"
+                        />
+                        {editFieldErrors.name ? <p className="mt-1.5 text-xs text-red-600">{editFieldErrors.name}</p> : null}
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Position *</label>
+                        <input
+                          type="text"
+                          value={editForm.position}
+                          onChange={(e) => handleEditChange('position', e.target.value)}
+                          className={inputClassName(Boolean(editFieldErrors.position))}
+                          placeholder="e.g. CEO, Director"
+                        />
+                        {editFieldErrors.position ? <p className="mt-1.5 text-xs text-red-600">{editFieldErrors.position}</p> : null}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Category</label>
+                      <select
+                        value={editForm.categoryId}
+                        onChange={(e) => handleEditChange('categoryId', e.target.value)}
+                        className={inputClassName(Boolean(editFieldErrors.categoryId))}
+                      >
+                        <option value="">Uncategorized</option>
+                        {selectableCategories.map((category) => (
+                          <option key={category.id || category._id} value={category.id || category._id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
+                      {editFieldErrors.categoryId ? <p className="mt-1.5 text-xs text-red-600">{editFieldErrors.categoryId}</p> : null}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                          <Phone className="h-3 w-3" /> Phone *
+                        </label>
+                        <input
+                          type="tel"
+                          value={editForm.phone}
+                          onChange={(e) => handleEditChange('phone', e.target.value)}
+                          className={inputClassName(Boolean(editFieldErrors.phone))}
+                          placeholder="+94 11 260 1001"
+                        />
+                        {editFieldErrors.phone ? <p className="mt-1.5 text-xs text-red-600">{editFieldErrors.phone}</p> : null}
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                          <Mail className="h-3 w-3" /> Email *
+                        </label>
+                        <input
+                          type="email"
+                          value={editForm.email}
+                          onChange={(e) => handleEditChange('email', e.target.value)}
+                          className={inputClassName(Boolean(editFieldErrors.email))}
+                          placeholder="email@nso.lk"
+                        />
+                        {editFieldErrors.email ? <p className="mt-1.5 text-xs text-red-600">{editFieldErrors.email}</p> : null}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-100">
+                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Profile Photo</label>
+                    <div className="flex gap-2 mb-3">
+                      <input
+                        type="text"
+                        value={editForm.imageUrl}
+                        onChange={(e) => handleEditChange('imageUrl', e.target.value)}
+                        className={`flex-1 px-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 transition ${editFieldErrors.imageUrl ? 'border-red-300 focus:ring-red-200 focus:border-red-400' : 'border-gray-200 focus:ring-primary/30 focus:border-primary'}`}
+                        placeholder="Image URL"
+                      />
+                      <label className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 focus-within:ring-2 focus-within:ring-primary/30 transition text-sm font-medium text-gray-700">
+                        <Upload className="h-4 w-4 text-gray-500" />
+                        <span className="hidden sm:inline">Upload File</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleEditImageUpload}
+                          disabled={editUploading}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    {editFieldErrors.imageUrl ? <p className="mt-1.5 text-xs text-red-600">{editFieldErrors.imageUrl}</p> : null}
+
+                    {editForm.imageUrl && (
+                      <div className="relative group rounded-xl overflow-hidden border border-gray-200 max-w-[200px]">
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={() => handleEditChange('imageUrl', '')}
+                            className="p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 shadow-sm"
+                            title="Remove image"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <img
+                          src={resolveMediaUrl(editForm.imageUrl)}
+                          alt="Preview"
+                          className="w-full h-40 object-cover"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between bg-gray-50/50 p-4 rounded-xl border">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">Profile Status</p>
+                      <p className="text-xs text-gray-500">Public visibility</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editForm.activeStatus}
+                        onChange={(e) => handleEditChange('activeStatus', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-border bg-gray-50/80 mt-auto sticky bottom-0">
+                <div className="flex gap-3">
+                  <button
+                    onClick={closeEditPanel}
+                    className="flex-1 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleEditSubmit}
+                    disabled={!editingMemberId || actionLoading[editingMemberId] || editUploading}
+                    className="flex-[2] px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 hover:shadow-md disabled:bg-gray-300 disabled:shadow-none transition-all flex items-center justify-center gap-2"
+                  >
+                    {editingMemberId && actionLoading[editingMemberId] ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Saving Changes...</>
+                    ) : (
+                      <><Save className="h-4 w-4" /> Save Profile</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

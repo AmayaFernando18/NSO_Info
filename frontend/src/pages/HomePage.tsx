@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { mockQuickLinks } from '../mocks/quickLinks';
 import { mockHighlights } from '../mocks/highlights';
 import { mockHeroImages } from '../mocks/heroImages';
 import Card from '../components/Card';
 import EventCalendar from '../components/EventCalendar';
-import { Calendar, FileText, Zap, ArrowRight, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, X, ExternalLink, Leaf, BarChart3 } from 'lucide-react';
+import { Calendar, FileText, Zap, ArrowRight, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, X, ExternalLink, Leaf, BarChart3, Plus, Save, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   DocumentTextIcon,
@@ -18,8 +18,10 @@ import {
 import { fetchPublicNews } from '../services/newsService';
 import { fetchPublicHeroSlides } from '../services/heroSlidesService';
 import { fetchCalendarData } from '../services/eventsService';
-import type { NewsDto, EventDto } from '../types';
+import { createPersonalEvent, deletePersonalEvent, fetchPersonalEventsByDateRange, updatePersonalEvent } from '../services/personalEventsService';
+import type { NewsDto, EventDto, PersonalEventDto, PersonalEventInput } from '../types';
 import { resolveMediaUrl } from '../utils/media';
+import { useUser } from '../context/UserContext';
 
 const iconMap: Record<string, any> = {
   Zap,
@@ -36,12 +38,75 @@ const iconMap: Record<string, any> = {
 };
 
 export default function HomePage() {
+  const { user } = useUser();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [newsItems, setNewsItems] = useState<NewsDto[]>([]);
   const [heroSlides, setHeroSlides] = useState(mockHeroImages);
   const [selectedNews, setSelectedNews] = useState<NewsDto | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<EventDto[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventDto | null>(null);
+  const [selectedPersonalEvent, setSelectedPersonalEvent] = useState<PersonalEventDto | null>(null);
+  const [personalEvents, setPersonalEvents] = useState<PersonalEventDto[]>([]);
+  const [personalPanelOpen, setPersonalPanelOpen] = useState(false);
+  const [personalPanelDate, setPersonalPanelDate] = useState<Date | null>(null);
+  const [personalForm, setPersonalForm] = useState<PersonalEventInput>({
+    title: '',
+    description: '',
+    eventDate: new Date().toISOString().slice(0, 10),
+    endDate: null,
+  });
+  const [personalEditingId, setPersonalEditingId] = useState<string | null>(null);
+  const [personalSaving, setPersonalSaving] = useState(false);
+  const [personalError, setPersonalError] = useState('');
+  const [personalSuccess, setPersonalSuccess] = useState('');
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const today = new Date();
+    return { year: today.getFullYear(), month: today.getMonth() + 1 };
+  });
+
+  const toDateInputValue = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const getMonthRange = (year: number, month: number) => {
+    const start = new Date(year, month - 1, 1);
+    const end = new Date(year, month, 0);
+    return {
+      start: start.toISOString().slice(0, 10),
+      end: end.toISOString().slice(0, 10),
+    };
+  };
+
+  const openPersonalPanelForDate = (date: Date) => {
+    const dateKey = toDateInputValue(date);
+    setPersonalPanelDate(date);
+    setPersonalPanelOpen(true);
+    setPersonalSuccess('');
+    setPersonalEditingId(null);
+    setPersonalForm({
+      title: '',
+      description: '',
+      eventDate: dateKey,
+      endDate: null,
+    });
+  };
+
+  const startEditPersonalEvent = (event: PersonalEventDto) => {
+    const dateKey = toDateInputValue(new Date(event.eventDate));
+    setPersonalPanelDate(new Date(event.eventDate));
+    setPersonalPanelOpen(true);
+    setPersonalSuccess('');
+    setPersonalEditingId(event.id || event._id || null);
+    setPersonalForm({
+      title: event.title,
+      description: event.description || '',
+      eventDate: dateKey,
+      endDate: event.endDate || null,
+    });
+  };
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
@@ -132,10 +197,159 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const loadPersonalEvents = async () => {
+      if (!user) {
+        setPersonalEvents([]);
+        return;
+      }
+
+      setPersonalSaving(true);
+      setPersonalError('');
+
+      try {
+        const { start, end } = getMonthRange(calendarMonth.year, calendarMonth.month);
+        const data = await fetchPersonalEventsByDateRange(start, end);
+        if (isMounted) {
+          setPersonalEvents(data || []);
+        }
+      } catch {
+        if (isMounted) {
+          setPersonalError('Unable to load personal events. Please try again.');
+          setPersonalEvents([]);
+        }
+      } finally {
+        if (isMounted) {
+          setPersonalSaving(false);
+        }
+      }
+    };
+
+    loadPersonalEvents();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, calendarMonth.year, calendarMonth.month]);
+
+  useEffect(() => {
     if (currentSlide >= heroSlides.length) {
       setCurrentSlide(0);
     }
   }, [currentSlide, heroSlides.length]);
+
+
+  useEffect(() => {
+    if (!personalSuccess) return;
+    const timer = setTimeout(() => setPersonalSuccess(''), 3000);
+    return () => clearTimeout(timer);
+  }, [personalSuccess]);
+
+  const handlePersonalSave = async () => {
+    if (!user) {
+      setPersonalError('Please log in to manage personal events.');
+      return;
+    }
+
+    if (!personalForm.title.trim()) {
+      setPersonalError('Title is required.');
+      return;
+    }
+
+    setPersonalSaving(true);
+    setPersonalError('');
+    setPersonalSuccess('');
+
+    try {
+      if (personalEditingId) {
+        const updated = await updatePersonalEvent(personalEditingId, personalForm);
+        setPersonalEvents((prev) =>
+          prev.map((event) => ((event.id || event._id) === personalEditingId ? updated : event))
+        );
+        setPersonalSuccess('Personal event updated successfully.');
+      } else {
+        const created = await createPersonalEvent(personalForm);
+        setPersonalEvents((prev) => {
+          const next = [...prev, created];
+          next.sort((a, b) => a.eventDate.localeCompare(b.eventDate));
+          return next;
+        });
+        setPersonalSuccess('Personal event added successfully.');
+      }
+
+      setPersonalEditingId(null);
+      setPersonalForm((prev) => ({
+        ...prev,
+        title: '',
+        description: '',
+        endDate: null,
+      }));
+
+      // Auto-close the panel after a brief delay so the success message is visible
+      setTimeout(() => {
+        setPersonalPanelOpen(false);
+        setPersonalSuccess('');
+      }, 1500);
+    } catch {
+      setPersonalError('Unable to save personal event. Please try again.');
+    } finally {
+      setPersonalSaving(false);
+    }
+  };
+
+  const handlePersonalDelete = async (event: PersonalEventDto) => {
+    const id = event.id || event._id;
+    if (!id) return;
+
+    const confirmed = window.confirm('Delete this personal event?');
+    if (!confirmed) return;
+
+    setPersonalSaving(true);
+    setPersonalError('');
+    setPersonalSuccess('');
+
+    try {
+      await deletePersonalEvent(id);
+      setPersonalEvents((prev) => prev.filter((item) => (item.id || item._id) !== id));
+      if (personalEditingId === id) {
+        setPersonalEditingId(null);
+      }
+      setPersonalSuccess('Personal event deleted successfully.');
+    } catch {
+      setPersonalError('Unable to delete personal event. Please try again.');
+    } finally {
+      setPersonalSaving(false);
+    }
+  };
+
+  const handleCalendarDateSelect = useCallback((_date: Date) => {
+    // Date selection is handled internally by EventCalendar's inline panel.
+    // The side panel only opens via Add/Edit buttons.
+  }, []);
+
+  const handleCalendarAddEvent = useCallback((date: Date) => {
+    openPersonalPanelForDate(date);
+  }, []);
+
+  const handleCalendarEditEvent = useCallback((event: PersonalEventDto) => {
+    startEditPersonalEvent(event);
+  }, []);
+
+  const handleCalendarDeleteEvent = useCallback((event: PersonalEventDto) => {
+    handlePersonalDelete(event);
+  }, []);
+
+  const handleCalendarViewEvent = useCallback((event: PersonalEventDto) => {
+    setSelectedPersonalEvent(event);
+  }, []);
+
+  const handleMonthChange = useCallback((year: number, month: number) => {
+    setCalendarMonth((prev) => {
+      if (prev.year === year && prev.month === month) return prev;
+      return { year, month };
+    });
+  }, []);
 
   const latestNews = useMemo(
     () =>
@@ -332,7 +546,26 @@ export default function HomePage() {
             </div>
 
             {/* Calendar */}
-            <EventCalendar onEventClick={(item) => { if ('eventDate' in item) setSelectedEvent(item as EventDto); }} />
+            <EventCalendar
+              personalEvents={personalEvents}
+              onMonthChange={handleMonthChange}
+              onDateSelect={handleCalendarDateSelect}
+              onAddEvent={user ? handleCalendarAddEvent : undefined}
+              onViewEvent={user ? handleCalendarViewEvent : undefined}
+              onEditEvent={user ? handleCalendarEditEvent : undefined}
+              onDeleteEvent={user ? handleCalendarDeleteEvent : undefined}
+              successMessage={personalSuccess}
+              onEventClick={(item) => {
+                if ('ownerUsername' in item) {
+                  startEditPersonalEvent(item as PersonalEventDto);
+                  return;
+                }
+
+                if ('eventDate' in item) {
+                  setSelectedEvent(item as EventDto);
+                }
+              }}
+            />
 
           </div>
         </div>
@@ -527,6 +760,182 @@ export default function HomePage() {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Personal Event Detail Modal */}
+      {selectedPersonalEvent && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-hidden"
+          onClick={() => setSelectedPersonalEvent(null)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-lg w-full shadow-2xl max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-gradient-to-r from-sky-600 to-sky-500 px-6 py-4 rounded-t-2xl flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-5 w-5 text-white" />
+                  <span className="font-semibold text-white">Personal Event Details</span>
+                </div>
+                <button
+                  onClick={() => setSelectedPersonalEvent(null)}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                  title="Close"
+                >
+                  <X className="h-5 w-5 text-white" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="mb-4">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-sky-700">Date</span>
+                <p className="text-sm text-gray-600 mt-1">
+                  {new Date(selectedPersonalEvent.eventDate).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </p>
+              </div>
+
+              <h2 className="text-2xl font-bold text-secondary mb-4 break-words">
+                {selectedPersonalEvent.title}
+              </h2>
+
+              <div className="rounded-xl border border-sky-100 bg-sky-50/70 p-4">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
+                  {selectedPersonalEvent.description?.trim() || 'No description provided.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 border-t border-border px-6 py-4 flex justify-end rounded-b-2xl flex-shrink-0">
+              <button
+                onClick={() => setSelectedPersonalEvent(null)}
+                className="px-6 py-2.5 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {personalPanelOpen && (
+        <div className="fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setPersonalPanelOpen(false)}
+          />
+          <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col">
+            <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-primary font-semibold">Personal Calendar</p>
+                <h3 className="text-lg font-bold text-secondary mt-1">
+                  {personalPanelDate
+                    ? personalPanelDate.toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })
+                    : 'Select a date'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setPersonalPanelOpen(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Close"
+              >
+                <X className="h-5 w-5 text-gray-600" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+              {!user && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                  Log in to add and manage your personal events.
+                </div>
+              )}
+
+              {personalSuccess && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>{personalSuccess}</span>
+                </div>
+              )}
+
+              {personalError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  {personalError}
+                </div>
+              )}
+
+              <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600">Title</label>
+                    <input
+                      value={personalForm.title}
+                      onChange={(e) => setPersonalForm((prev) => ({ ...prev, title: e.target.value }))}
+                      disabled={!user || personalSaving}
+                      className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      placeholder="Add a title"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600">Description</label>
+                    <textarea
+                      value={personalForm.description}
+                      onChange={(e) => setPersonalForm((prev) => ({ ...prev, description: e.target.value }))}
+                      disabled={!user || personalSaving}
+                      className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      rows={3}
+                      placeholder="Optional details"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600">Date</label>
+                      <input
+                        type="date"
+                        value={personalForm.eventDate}
+                        onChange={(e) => setPersonalForm((prev) => ({ ...prev, eventDate: e.target.value }))}
+                        disabled={!user || personalSaving}
+                        className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600">End date (optional)</label>
+                      <input
+                        type="date"
+                        value={personalForm.endDate ? String(personalForm.endDate).slice(0, 10) : ''}
+                        onChange={(e) =>
+                          setPersonalForm((prev) => ({
+                            ...prev,
+                            endDate: e.target.value ? e.target.value : null,
+                          }))
+                        }
+                        disabled={!user || personalSaving}
+                        className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handlePersonalSave}
+                    disabled={!user || personalSaving}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {personalEditingId ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                    {personalSaving ? 'Saving...' : personalEditingId ? 'Save changes' : 'Add event'}
+                  </button>
+                </div>
             </div>
           </div>
         </div>

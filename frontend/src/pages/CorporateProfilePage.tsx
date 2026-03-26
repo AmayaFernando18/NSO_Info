@@ -216,13 +216,13 @@ function DirectoryCard({ manager, index }: { manager: CorporateMemberDto; index:
           </div>
         )}
 
-        <div className="absolute inset-0 bg-gradient-to-t from-secondary/85 via-secondary/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 p-5 text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+        <div className="absolute inset-0 bg-gradient-to-t from-secondary/55 via-secondary/15 to-transparent opacity-100 transition-opacity duration-300 group-hover:opacity-35" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 p-5 text-white">
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/80">
             {manager.department || 'NSO (PVT) LTD.'}
           </p>
-          <h3 className="mt-2 text-2xl font-bold leading-tight">{manager.name}</h3>
-          <p className="mt-1 text-lg font-semibold text-white/90">{manager.position}</p>
+          <h3 className="mt-2 text-lg font-bold leading-tight">{manager.name}</h3>
+          <p className="mt-1 text-base font-semibold text-white/90">{manager.position}</p>
         </div>
       </div>
 

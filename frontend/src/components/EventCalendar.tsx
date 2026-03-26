@@ -1,10 +1,20 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, X, ExternalLink } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, ExternalLink, Plus, Pencil, Trash2, CheckCircle2, Eye } from 'lucide-react'
 import { fetchCalendarData } from '../services/eventsService'
-import type { EventDto, HolidayDto, CalendarDataDto } from '../types'
+import type { EventDto, HolidayDto, CalendarDataDto, PersonalEventDto } from '../types'
+
+type CalendarItem = EventDto | HolidayDto | PersonalEventDto
 
 interface CalendarProps {
-  onEventClick?: (event: EventDto | HolidayDto) => void
+  onEventClick?: (event: CalendarItem) => void
+  onDateSelect?: (date: Date, items: CalendarItem[]) => void
+  onMonthChange?: (year: number, month: number) => void
+  onAddEvent?: (date: Date) => void
+  onViewEvent?: (event: PersonalEventDto) => void
+  onEditEvent?: (event: PersonalEventDto) => void
+  onDeleteEvent?: (event: PersonalEventDto) => void
+  successMessage?: string
+  personalEvents?: PersonalEventDto[]
   compact?: boolean
 }
 
@@ -14,12 +24,23 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ]
 
-export default function EventCalendar({ onEventClick, compact = false }: CalendarProps) {
+export default function EventCalendar({
+  onEventClick,
+  onDateSelect,
+  onMonthChange,
+  onAddEvent,
+  onViewEvent,
+  onEditEvent,
+  onDeleteEvent,
+  successMessage,
+  personalEvents = [],
+  compact = false,
+}: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [calendarData, setCalendarData] = useState<CalendarDataDto | null>(null)
   const [loading, setLoading] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [selectedDayEvents, setSelectedDayEvents] = useState<(EventDto | HolidayDto)[]>([])
+  const [selectedDayEvents, setSelectedDayEvents] = useState<CalendarItem[]>([])
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
@@ -39,6 +60,10 @@ export default function EventCalendar({ onEventClick, compact = false }: Calenda
   useEffect(() => {
     loadCalendarData()
   }, [loadCalendarData])
+
+  useEffect(() => {
+    onMonthChange?.(year, month + 1)
+  }, [year, month, onMonthChange])
 
   const goToPreviousMonth = () => {
     setCurrentDate(new Date(year, month - 1, 1))
@@ -89,7 +114,7 @@ export default function EventCalendar({ onEventClick, compact = false }: Calenda
 
   // Build a map of date -> events/holidays
   const dateEventsMap = useMemo(() => {
-    const map = new Map<string, (EventDto | HolidayDto)[]>()
+    const map = new Map<string, CalendarItem[]>()
 
     if (calendarData) {
       // Add events
@@ -120,8 +145,16 @@ export default function EventCalendar({ onEventClick, compact = false }: Calenda
       })
     }
 
+    personalEvents.forEach((event) => {
+      const dateKey = event.eventDate.slice(0, 10)
+      if (!map.has(dateKey)) {
+        map.set(dateKey, [])
+      }
+      map.get(dateKey)!.push(event)
+    })
+
     return map
-  }, [calendarData])
+  }, [calendarData, personalEvents])
 
   const formatDateKey = (date: Date) => {
     const y = date.getFullYear()
@@ -129,6 +162,14 @@ export default function EventCalendar({ onEventClick, compact = false }: Calenda
     const d = String(date.getDate()).padStart(2, '0')
     return `${y}-${m}-${d}`
   }
+
+  // Keep selectedDayEvents in sync when events are added/deleted
+  useEffect(() => {
+    if (selectedDate) {
+      const dateKey = formatDateKey(selectedDate)
+      setSelectedDayEvents(dateEventsMap.get(dateKey) || [])
+    }
+  }, [dateEventsMap, selectedDate])
 
   const isToday = (date: Date) => {
     const today = new Date()
@@ -144,6 +185,7 @@ export default function EventCalendar({ onEventClick, compact = false }: Calenda
     const events = dateEventsMap.get(dateKey) || []
     setSelectedDate(date)
     setSelectedDayEvents(events)
+    onDateSelect?.(date, events)
   }
 
   const getDayClasses = (date: Date, isCurrentMonth: boolean) => {
@@ -152,6 +194,7 @@ export default function EventCalendar({ onEventClick, compact = false }: Calenda
     const hasHoliday = events.some((e) => 'isHoliday' in e && e.isHoliday)
     const hasSpecialDay = events.some((e) => 'isSpecialDay' in e && e.isSpecialDay)
     const hasEvent = events.some((e) => 'eventDate' in e)
+    const hasPersonalEvent = events.some((e) => 'ownerUsername' in e)
 
     let classes = 'relative p-1 text-center cursor-pointer transition-all rounded-lg '
 
@@ -163,6 +206,8 @@ export default function EventCalendar({ onEventClick, compact = false }: Calenda
       classes += 'bg-red-100 text-red-800 font-medium '
     } else if (hasSpecialDay) {
       classes += 'bg-amber-100 text-amber-800 font-medium '
+    } else if (hasPersonalEvent) {
+      classes += 'bg-emerald-100 text-emerald-800 font-medium '
     } else if (hasEvent) {
       classes += 'bg-primary/10 text-primary font-medium '
     } else {
@@ -176,8 +221,12 @@ export default function EventCalendar({ onEventClick, compact = false }: Calenda
     return classes
   }
 
-  const isHolidayItem = (item: EventDto | HolidayDto): item is HolidayDto => {
+  const isHolidayItem = (item: CalendarItem): item is HolidayDto => {
     return 'date' in item && !('eventDate' in item)
+  }
+
+  const isPersonalEventItem = (item: CalendarItem): item is PersonalEventDto => {
+    return 'ownerUsername' in item
   }
 
   return (
@@ -261,6 +310,8 @@ export default function EventCalendar({ onEventClick, compact = false }: Calenda
                           ? 'bg-red-500'
                           : events[i] && 'isSpecialDay' in events[i] && events[i].isSpecialDay
                           ? 'bg-amber-500'
+                          : events[i] && 'ownerUsername' in events[i]
+                          ? 'bg-emerald-500'
                           : 'bg-primary'
                       }`}
                     />
@@ -280,12 +331,16 @@ export default function EventCalendar({ onEventClick, compact = false }: Calenda
             <span>Holiday</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-amber-100 border border-amber-200" />
+            <div className="w-3 h-3 rounded bg-[#F8E9B8] border border-[#E9CF86]" />
             <span>Special Day</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded bg-primary/10 border border-primary/20" />
             <span>Event</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded bg-emerald-100 border border-emerald-200" />
+            <span>Personal Event</span>
           </div>
         </div>
       )}
@@ -313,34 +368,88 @@ export default function EventCalendar({ onEventClick, compact = false }: Calenda
               <X className="h-4 w-4 text-gray-500" />
             </button>
           </div>
+
+          {successMessage && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 flex items-center gap-2 mb-3">
+              <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+              <span>{successMessage}</span>
+            </div>
+          )}
           
           {selectedDayEvents.length === 0 ? (
-            <div className="text-center py-4 text-sm text-gray-500">
-              No events on this day.
+            <div className="text-center py-4">
+              <p className="text-sm text-gray-500 mb-3">No events on this day.</p>
+              {onAddEvent && (
+                <button
+                  onClick={() => onAddEvent(selectedDate)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary border border-primary/25 rounded-lg hover:bg-primary/5 transition-colors"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Event
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
               {selectedDayEvents.map((item, idx) => {
                 const isHoliday = isHolidayItem(item) ? item.isHoliday : false
                 const isSpecialDay = isHolidayItem(item) ? item.isSpecialDay : false
+                const isPersonal = isPersonalEventItem(item)
+                const isPublicEvent = !isHolidayItem(item) && !isPersonal
 
                 return (
                   <div
                     key={idx}
-                    className={`p-3 rounded-lg text-sm cursor-pointer transition-all ${
+                    className={`p-3 rounded-lg text-sm transition-all ${
                       isHoliday
                         ? 'bg-red-50 hover:bg-red-100 border-l-4 border-red-500'
                         : isSpecialDay
                         ? 'bg-amber-50 hover:bg-amber-100 border-l-4 border-amber-500'
+                        : isPersonal
+                        ? 'bg-emerald-50 hover:bg-emerald-100 border-l-4 border-emerald-500'
                         : 'bg-primary/5 hover:bg-primary/10 border-l-4 border-primary'
                     }`}
-                    onClick={() => onEventClick?.(item)}
                   >
-                    <div className="font-medium text-secondary leading-tight">{item.title}</div>
-                    {!isHolidayItem(item) && item.description && (
-                      <p className="text-xs text-gray-600 mt-1.5 line-clamp-2 leading-relaxed">{item.description}</p>
-                    )}
-                    {!isHolidayItem(item) && item.linkLabel && item.linkUrl && (
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1 cursor-pointer" onClick={() => onEventClick?.(item)}>
+                        <div className="font-medium text-secondary leading-tight">{item.title}</div>
+                        {!isHolidayItem(item) && item.description && (
+                          <p className="text-xs text-gray-600 mt-1.5 line-clamp-2 leading-relaxed">{item.description}</p>
+                        )}
+                      </div>
+                      {isPersonal && (
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {onViewEvent && (
+                            <button
+                              onClick={() => onViewEvent(item as PersonalEventDto)}
+                              className="p-1.5 rounded-lg text-sky-700 hover:bg-sky-50 transition-colors"
+                              title="View"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {onEditEvent && (
+                            <button
+                              onClick={() => onEditEvent(item as PersonalEventDto)}
+                              className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors"
+                              title="Edit"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {onDeleteEvent && (
+                            <button
+                              onClick={() => onDeleteEvent(item as PersonalEventDto)}
+                              className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {isPublicEvent && item.linkLabel && item.linkUrl && (
                       <a
                         href={item.linkUrl}
                         target="_blank"
@@ -355,6 +464,15 @@ export default function EventCalendar({ onEventClick, compact = false }: Calenda
                   </div>
                 )
               })}
+              {onAddEvent && (
+                <button
+                  onClick={() => onAddEvent(selectedDate)}
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 mt-1 text-xs font-semibold text-primary border border-primary/25 rounded-lg hover:bg-primary/5 transition-colors"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Event
+                </button>
+              )}
             </div>
           )}
         </div>

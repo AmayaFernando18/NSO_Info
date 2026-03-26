@@ -6,6 +6,8 @@ import { AlertCircle, CheckCircle2, FileText, Loader2, Upload, X, Check, XCircle
 import { createNews, fetchAdminNews, uploadNewsImage, approveNews, rejectNews, removeNews, updateNews } from '../../services/newsService'
 import type { NewsDto } from '../../types'
 import { resolveMediaUrl } from '../../utils/media'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
+import { hasFieldErrors, parseApiValidationErrors, validateNewsForm } from '../../utils/adminValidation'
 
 type NewsFormState = {
   title: string
@@ -55,6 +57,8 @@ export default function NewsManagementPage() {
   const [rejectingItemId, setRejectingItemId] = useState<string | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({})
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof NewsFormState, string>>>({})
+  const [editFieldErrors, setEditFieldErrors] = useState<Partial<Record<keyof NewsFormState, string>>>({})
 
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -95,6 +99,12 @@ export default function NewsManagementPage() {
 
   const handleChange = (field: keyof NewsFormState, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }))
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
   }
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -106,6 +116,12 @@ export default function NewsManagementPage() {
       setError('')
       const imageUrl = await uploadNewsImage(file)
       setForm((prev) => ({ ...prev, imageUrl }))
+      setFieldErrors((prev) => {
+        if (!prev.imageUrl) return prev
+        const next = { ...prev }
+        delete next.imageUrl
+        return next
+      })
       setSuccess('Image uploaded successfully.')
     } catch (err) {
       setError('Image upload failed. Please try again.')
@@ -117,25 +133,29 @@ export default function NewsManagementPage() {
 
   const resetForm = () => {
     setForm(createInitialFormState())
+    setFieldErrors({})
   }
+
+  const inputClassName = (hasError: boolean) =>
+    `w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 disabled:bg-gray-100 ${
+      hasError ? 'border-red-300 focus:ring-red-200 focus:border-red-400' : 'border-border focus:ring-primary'
+    }`
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     setError('')
     setSuccess('')
+    setFieldErrors({})
 
     if (!canCreate) {
       setError('You do not have permission to create news.')
       return
     }
 
-    if (!form.title.trim() || !form.summary.trim() || !form.content.trim() || !form.category.trim()) {
-      setError('Title, summary, content, and category are required.')
-      return
-    }
-
-    if (!form.imageUrl.trim()) {
-      setError('Please provide an image by uploading from computer or pasting an image URL.')
+    const validationErrors = validateNewsForm(form)
+    if (hasFieldErrors(validationErrors)) {
+      setFieldErrors(validationErrors)
+      setError('Please correct the highlighted fields and try again.')
       return
     }
 
@@ -159,8 +179,9 @@ export default function NewsManagementPage() {
       setSuccess('News item created successfully. It is pending approval.')
       resetForm()
     } catch (err: any) {
-      const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to create news item.'
-      setError(message)
+      const parsed = parseApiValidationErrors(err)
+      setFieldErrors(parsed.fieldErrors as Partial<Record<keyof NewsFormState, string>>)
+      setError(parsed.message || 'Failed to create news item.')
     } finally {
       setSubmitting(false)
     }
@@ -256,6 +277,12 @@ export default function NewsManagementPage() {
 
   const handleEditChange = (field: keyof NewsFormState, value: string | boolean) => {
     setEditForm((prev) => ({ ...prev, [field]: value }))
+    setEditFieldErrors((prev) => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
   }
 
   const handleEditImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -267,6 +294,12 @@ export default function NewsManagementPage() {
       setError('')
       const imageUrl = await uploadNewsImage(file)
       setEditForm((prev) => ({ ...prev, imageUrl }))
+      setEditFieldErrors((prev) => {
+        if (!prev.imageUrl) return prev
+        const next = { ...prev }
+        delete next.imageUrl
+        return next
+      })
       setSuccess('Image uploaded successfully.')
     } catch (err) {
       setError('Image upload failed. Please try again.')
@@ -282,13 +315,11 @@ export default function NewsManagementPage() {
     const itemId = editingItem.id || editingItem._id
     if (!itemId) return
 
-    if (!editForm.title.trim() || !editForm.summary.trim() || !editForm.content.trim() || !editForm.category.trim()) {
-      setError('Title, summary, content, and category are required.')
-      return
-    }
-
-    if (!editForm.imageUrl.trim()) {
-      setError('Please provide an image by uploading from computer or pasting an image URL.')
+    setEditFieldErrors({})
+    const validationErrors = validateNewsForm(editForm)
+    if (hasFieldErrors(validationErrors)) {
+      setEditFieldErrors(validationErrors)
+      setError('Please correct the highlighted fields before saving.')
       return
     }
 
@@ -309,8 +340,9 @@ export default function NewsManagementPage() {
       setEditModalOpen(false)
       setEditingItem(null)
     } catch (err: any) {
-      const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to update news.'
-      setError(message)
+      const parsed = parseApiValidationErrors(err)
+      setEditFieldErrors(parsed.fieldErrors as Partial<Record<keyof NewsFormState, string>>)
+      setError(parsed.message || 'Failed to update news.')
     } finally {
       setActionLoading((prev) => ({ ...prev, [itemId]: false }))
     }
@@ -320,22 +352,22 @@ export default function NewsManagementPage() {
     setEditModalOpen(false)
     setEditingItem(null)
     setEditForm(createInitialFormState())
+    setEditFieldErrors({})
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-secondary">News Management</h2>
-          <p className="text-gray-600 text-sm mt-1">Create and manage news articles with RBAC control</p>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="News Management"
+        subtitle="Create and manage news articles with RBAC control"
+        icon={FileText}
+      />
 
       <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6">
         <div className="flex items-start space-x-3">
           <FileText className="h-6 w-6 text-blue-600 flex-shrink-0 mt-1" />
           <div>
-            <h3 className="text-lg font-semibold text-blue-900 mb-2">Your Permissions</h3>
+            <h3 className="text-base font-bold text-secondary mb-2">Your Permissions</h3>
             <div className="space-y-1 text-sm text-blue-800">
               <p>View News: <strong>Yes</strong></p>
               <p>Create News: <strong>{canCreate ? 'Yes' : 'No'}</strong></p>
@@ -379,9 +411,10 @@ export default function NewsManagementPage() {
                 value={form.title}
                 onChange={(e) => handleChange('title', e.target.value)}
                 disabled={!canCreate || submitting}
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-100"
+                className={inputClassName(Boolean(fieldErrors.title))}
                 placeholder="Enter news title"
               />
+              {fieldErrors.title ? <p className="mt-1 text-xs text-red-600">{fieldErrors.title}</p> : null}
             </div>
 
             <div>
@@ -391,9 +424,10 @@ export default function NewsManagementPage() {
                 onChange={(e) => handleChange('summary', e.target.value)}
                 disabled={!canCreate || submitting}
                 rows={3}
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-100"
+                className={inputClassName(Boolean(fieldErrors.summary))}
                 placeholder="Short summary for cards and preview"
               />
+              {fieldErrors.summary ? <p className="mt-1 text-xs text-red-600">{fieldErrors.summary}</p> : null}
             </div>
 
             <div>
@@ -403,9 +437,10 @@ export default function NewsManagementPage() {
                 onChange={(e) => handleChange('content', e.target.value)}
                 disabled={!canCreate || submitting}
                 rows={8}
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-100"
+                className={inputClassName(Boolean(fieldErrors.content))}
                 placeholder="Write the full article content"
               />
+              {fieldErrors.content ? <p className="mt-1 text-xs text-red-600">{fieldErrors.content}</p> : null}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -415,7 +450,7 @@ export default function NewsManagementPage() {
                   value={form.category}
                   onChange={(e) => handleChange('category', e.target.value)}
                   disabled={!canCreate || submitting}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-100"
+                  className={inputClassName(Boolean(fieldErrors.category))}
                 >
                   {categoryOptions.map((category) => (
                     <option key={category} value={category}>
@@ -423,6 +458,7 @@ export default function NewsManagementPage() {
                     </option>
                   ))}
                 </select>
+                {fieldErrors.category ? <p className="mt-1 text-xs text-red-600">{fieldErrors.category}</p> : null}
               </div>
 
               <div>
@@ -432,7 +468,7 @@ export default function NewsManagementPage() {
                   value={form.publishedAt}
                   onChange={(e) => handleChange('publishedAt', e.target.value)}
                   disabled={!canCreate || submitting}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-100"
+                  className={inputClassName(Boolean(fieldErrors.publishedAt))}
                 />
               </div>
             </div>
@@ -465,9 +501,10 @@ export default function NewsManagementPage() {
                   value={form.imageUrl}
                   onChange={(e) => handleChange('imageUrl', e.target.value)}
                   disabled={!canCreate || submitting}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-100"
+                  className={inputClassName(Boolean(fieldErrors.imageUrl))}
                   placeholder="Paste image URL (e.g., https://example.com/image.jpg)"
                 />
+                {fieldErrors.imageUrl ? <p className="mt-1 text-xs text-red-600">{fieldErrors.imageUrl}</p> : null}
 
                 {form.imageUrl && (
                   <div className="border border-border rounded-lg p-3">
@@ -555,7 +592,13 @@ export default function NewsManagementPage() {
                     )}
 
                     <div className="mt-3 flex items-center justify-between gap-2">
-                      <div className="text-[11px] text-gray-500">{new Date(item.publishedAt).toLocaleString()}</div>
+                      <div className="text-[11px] text-gray-500">
+                        {new Date(item.publishedAt).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </div>
 
                       <div className="flex items-center gap-2">
                         {canEdit && (
@@ -684,9 +727,10 @@ export default function NewsManagementPage() {
                   type="text"
                   value={editForm.title}
                   onChange={(e) => handleEditChange('title', e.target.value)}
-                  className="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className={inputClassName(Boolean(editFieldErrors.title))}
                   placeholder="Enter news title"
                 />
+                {editFieldErrors.title ? <p className="mt-1 text-xs text-red-600">{editFieldErrors.title}</p> : null}
               </div>
 
               <div>
@@ -695,9 +739,10 @@ export default function NewsManagementPage() {
                   value={editForm.summary}
                   onChange={(e) => handleEditChange('summary', e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className={inputClassName(Boolean(editFieldErrors.summary))}
                   placeholder="Short summary for cards and preview"
                 />
+                {editFieldErrors.summary ? <p className="mt-1 text-xs text-red-600">{editFieldErrors.summary}</p> : null}
               </div>
 
               <div>
@@ -706,9 +751,10 @@ export default function NewsManagementPage() {
                   value={editForm.content}
                   onChange={(e) => handleEditChange('content', e.target.value)}
                   rows={8}
-                  className="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className={inputClassName(Boolean(editFieldErrors.content))}
                   placeholder="Write the full article content"
                 />
+                {editFieldErrors.content ? <p className="mt-1 text-xs text-red-600">{editFieldErrors.content}</p> : null}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -717,7 +763,7 @@ export default function NewsManagementPage() {
                   <select
                     value={editForm.category}
                     onChange={(e) => handleEditChange('category', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className={inputClassName(Boolean(editFieldErrors.category))}
                   >
                     {categoryOptions.map((category) => (
                       <option key={category} value={category}>
@@ -725,6 +771,7 @@ export default function NewsManagementPage() {
                       </option>
                     ))}
                   </select>
+                  {editFieldErrors.category ? <p className="mt-1 text-xs text-red-600">{editFieldErrors.category}</p> : null}
                 </div>
 
                 <div>
@@ -733,7 +780,7 @@ export default function NewsManagementPage() {
                     type="date"
                     value={editForm.publishedAt}
                     onChange={(e) => handleEditChange('publishedAt', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className={inputClassName(Boolean(editFieldErrors.publishedAt))}
                   />
                 </div>
               </div>
@@ -765,9 +812,10 @@ export default function NewsManagementPage() {
                     type="text"
                     value={editForm.imageUrl}
                     onChange={(e) => handleEditChange('imageUrl', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className={inputClassName(Boolean(editFieldErrors.imageUrl))}
                     placeholder="Paste image URL (e.g., https://example.com/image.jpg)"
                   />
+                  {editFieldErrors.imageUrl ? <p className="mt-1 text-xs text-red-600">{editFieldErrors.imageUrl}</p> : null}
 
                   {editForm.imageUrl && (
                     <div className="border border-border rounded-lg p-3">

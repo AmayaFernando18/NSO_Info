@@ -4,7 +4,7 @@ function validateRequest(schema) {
   return (req, _res, next) => {
     try {
       schema.parse({
-        body: req.body,
+        body: req.body ?? {},
         params: req.params,
         query: req.query,
       });

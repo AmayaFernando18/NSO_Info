@@ -30,6 +30,7 @@ import {
 } from '../../services/heroSlidesService'
 import type { HeroCarouselImageDto } from '../../types'
 import { resolveMediaUrl } from '../../utils/media'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
 
 type HeroFormState = {
   title: string
@@ -265,23 +266,21 @@ export default function HeroManagementPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-secondary">Hero Slides Management</h2>
-          <p className="text-gray-500 text-sm mt-1">
-            Manage hero carousel images, content, and display order
-          </p>
-        </div>
-        <button
-          onClick={() => void loadSlides()}
-          disabled={loading}
-          className="px-4 py-2.5 border border-border bg-white rounded-lg inline-flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors shadow-sm"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
-      </div>
+      <AdminPageHeader
+        title="Hero Slides Management"
+        subtitle="Manage hero carousel images, content, and display order"
+        icon={Image}
+        actions={
+          <button
+            onClick={() => void loadSlides()}
+            disabled={loading}
+            className="px-4 py-2.5 border border-border bg-white rounded-lg inline-flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors shadow-sm"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        }
+      />
 
       {/* Notifications */}
       {(error || success) && (

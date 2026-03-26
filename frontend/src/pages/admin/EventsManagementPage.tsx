@@ -29,6 +29,8 @@ import {
   permanentlyDeleteEvent,
 } from '../../services/eventsService'
 import type { EventDto, EventCategory } from '../../types'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
+import { hasFieldErrors, parseApiValidationErrors, validateEventForm } from '../../utils/adminValidation'
 
 type EventFormState = {
   title: string
@@ -110,12 +112,20 @@ export default function EventsManagementPage() {
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({})
   const [showDeleted, setShowDeleted] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof EventFormState, string>>>({})
 
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<EventDto | null>(null)
   const [editForm, setEditForm] = useState<EventFormState>(createInitialFormState)
   const [editError, setEditError] = useState('')
+  const [editFieldErrors, setEditFieldErrors] = useState<Partial<Record<keyof EventFormState, string>>>({})
+
+  useEffect(() => {
+    if (!success) return
+    const timer = setTimeout(() => setSuccess(''), 4000)
+    return () => clearTimeout(timer)
+  }, [success])
 
   const sortedEvents = useMemo(
     () =>
@@ -151,24 +161,39 @@ export default function EventsManagementPage() {
 
   const handleChange = (field: keyof EventFormState, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }))
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
   }
 
   const resetForm = () => {
     setForm(createInitialFormState())
+    setFieldErrors({})
   }
+
+  const inputClassName = (hasError: boolean) =>
+    `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-primary ${
+      hasError ? 'border-red-300 focus:ring-red-200' : 'border-gray-300 focus:ring-primary/20'
+    }`
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     setError('')
     setSuccess('')
+    setFieldErrors({})
 
     if (!canCreate) {
       setError('You do not have permission to create events.')
       return
     }
 
-    if (!form.title.trim() || !form.description.trim() || !form.eventDate) {
-      setError('Title, description, and event date are required.')
+    const validationErrors = validateEventForm(form)
+    if (hasFieldErrors(validationErrors)) {
+      setFieldErrors(validationErrors as Partial<Record<keyof EventFormState, string>>)
+      setError('Please correct the highlighted fields and try again.')
       return
     }
 
@@ -192,8 +217,9 @@ export default function EventsManagementPage() {
       resetForm()
       setShowCreateForm(false)
     } catch (err: any) {
-      const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to create event.'
-      setError(message)
+      const parsed = parseApiValidationErrors(err)
+      setFieldErrors(parsed.fieldErrors as Partial<Record<keyof EventFormState, string>>)
+      setError(parsed.message || 'Failed to create event.')
     } finally {
       setSubmitting(false)
     }
@@ -343,6 +369,12 @@ export default function EventsManagementPage() {
 
   const handleEditChange = (field: keyof EventFormState, value: string | boolean) => {
     setEditForm((prev) => ({ ...prev, [field]: value }))
+    setEditFieldErrors((prev) => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
   }
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -352,8 +384,11 @@ export default function EventsManagementPage() {
     const itemId = editingItem.id || editingItem._id
     if (!itemId) return
 
-    if (!editForm.title.trim() || !editForm.description.trim() || !editForm.eventDate) {
-      setEditError('Title, description, and event date are required.')
+    setEditFieldErrors({})
+    const validationErrors = validateEventForm(editForm)
+    if (hasFieldErrors(validationErrors)) {
+      setEditFieldErrors(validationErrors as Partial<Record<keyof EventFormState, string>>)
+      setEditError('Please correct the highlighted fields before saving.')
       return
     }
 
@@ -377,8 +412,9 @@ export default function EventsManagementPage() {
       setEditModalOpen(false)
       setEditingItem(null)
     } catch (err: any) {
-      const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to update event.'
-      setEditError(message)
+      const parsed = parseApiValidationErrors(err)
+      setEditFieldErrors(parsed.fieldErrors as Partial<Record<keyof EventFormState, string>>)
+      setEditError(parsed.message || 'Failed to update event.')
     } finally {
       setActionLoading((prev) => ({ ...prev, [itemId]: false }))
     }
@@ -387,40 +423,35 @@ export default function EventsManagementPage() {
   const displayList = showDeleted ? deletedEvents : sortedEvents
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 p-2 rounded-lg">
-            <Calendar className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-secondary">Events Management</h1>
-            <p className="text-sm text-gray-500">Create and manage events for the calendar</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowDeleted(!showDeleted)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              showDeleted
-                ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {showDeleted ? 'View Active' : `Deleted (${deletedEvents.length})`}
-          </button>
-          {canCreate && !showDeleted && (
+    <div className="space-y-6">
+      <AdminPageHeader
+        title="Events Management"
+        subtitle="Create and manage events for the calendar"
+        icon={Calendar}
+        actions={
+          <>
             <button
-              onClick={() => setShowCreateForm(!showCreateForm)}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              onClick={() => setShowDeleted(!showDeleted)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                showDeleted
+                  ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
             >
-              <Plus className="h-4 w-4" />
-              Create Event
+              {showDeleted ? 'View Active' : `Deleted (${deletedEvents.length})`}
             </button>
-          )}
-        </div>
-      </div>
+            {canCreate && !showDeleted && (
+              <button
+                onClick={() => setShowCreateForm(!showCreateForm)}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Create Event
+              </button>
+            )}
+          </>
+        }
+      />
 
       {/* Alerts */}
       {error && (
@@ -451,7 +482,7 @@ export default function EventsManagementPage() {
       {showCreateForm && canCreate && !showDeleted && (
         <div className="bg-white border border-border rounded-xl shadow-sm mb-6">
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-secondary">Create New Event</h2>
+            <h2 className="text-lg font-bold text-secondary">Create New Event</h2>
           </div>
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -461,17 +492,17 @@ export default function EventsManagementPage() {
                   type="text"
                   value={form.title}
                   onChange={(e) => handleChange('title', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className={inputClassName(Boolean(fieldErrors.title))}
                   placeholder="Event title"
-                  required
                 />
+                {fieldErrors.title ? <p className="mt-1 text-xs text-red-600">{fieldErrors.title}</p> : null}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
                 <select
                   value={form.category}
                   onChange={(e) => handleChange('category', e.target.value as EventCategory)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className={inputClassName(Boolean(fieldErrors.category))}
                 >
                   {EVENT_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
@@ -479,6 +510,7 @@ export default function EventsManagementPage() {
                     </option>
                   ))}
                 </select>
+                {fieldErrors.category ? <p className="mt-1 text-xs text-red-600">{fieldErrors.category}</p> : null}
               </div>
             </div>
 
@@ -488,10 +520,10 @@ export default function EventsManagementPage() {
                 value={form.description}
                 onChange={(e) => handleChange('description', e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className={inputClassName(Boolean(fieldErrors.description))}
                 placeholder="Event description"
-                required
               />
+              {fieldErrors.description ? <p className="mt-1 text-xs text-red-600">{fieldErrors.description}</p> : null}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -501,9 +533,9 @@ export default function EventsManagementPage() {
                   type="date"
                   value={form.eventDate}
                   onChange={(e) => handleChange('eventDate', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  required
+                  className={inputClassName(Boolean(fieldErrors.eventDate))}
                 />
+                {fieldErrors.eventDate ? <p className="mt-1 text-xs text-red-600">{fieldErrors.eventDate}</p> : null}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
@@ -511,8 +543,9 @@ export default function EventsManagementPage() {
                   type="date"
                   value={form.endDate}
                   onChange={(e) => handleChange('endDate', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className={inputClassName(Boolean(fieldErrors.endDate))}
                 />
+                {fieldErrors.endDate ? <p className="mt-1 text-xs text-red-600">{fieldErrors.endDate}</p> : null}
               </div>
             </div>
 
@@ -523,7 +556,7 @@ export default function EventsManagementPage() {
                   type="text"
                   value={form.linkLabel}
                   onChange={(e) => handleChange('linkLabel', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className={inputClassName(Boolean(fieldErrors.linkLabel))}
                   placeholder="e.g., Register Now"
                 />
               </div>
@@ -533,9 +566,10 @@ export default function EventsManagementPage() {
                   type="url"
                   value={form.linkUrl}
                   onChange={(e) => handleChange('linkUrl', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className={inputClassName(Boolean(fieldErrors.linkUrl))}
                   placeholder="https://example.com"
                 />
+                {fieldErrors.linkUrl ? <p className="mt-1 text-xs text-red-600">{fieldErrors.linkUrl}</p> : null}
               </div>
             </div>
 
@@ -845,16 +879,16 @@ export default function EventsManagementPage() {
                       type="text"
                       value={editForm.title}
                       onChange={(e) => handleEditChange('title', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                      required
+                      className={inputClassName(Boolean(editFieldErrors.title))}
                     />
+                    {editFieldErrors.title ? <p className="mt-1 text-xs text-red-600">{editFieldErrors.title}</p> : null}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
                     <select
                       value={editForm.category}
                       onChange={(e) => handleEditChange('category', e.target.value as EventCategory)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      className={inputClassName(Boolean(editFieldErrors.category))}
                     >
                       {EVENT_CATEGORIES.map((cat) => (
                         <option key={cat} value={cat}>
@@ -862,6 +896,7 @@ export default function EventsManagementPage() {
                         </option>
                       ))}
                     </select>
+                    {editFieldErrors.category ? <p className="mt-1 text-xs text-red-600">{editFieldErrors.category}</p> : null}
                   </div>
                 </div>
 
@@ -871,9 +906,9 @@ export default function EventsManagementPage() {
                     value={editForm.description}
                     onChange={(e) => handleEditChange('description', e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                    required
+                    className={inputClassName(Boolean(editFieldErrors.description))}
                   />
+                  {editFieldErrors.description ? <p className="mt-1 text-xs text-red-600">{editFieldErrors.description}</p> : null}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -883,9 +918,9 @@ export default function EventsManagementPage() {
                       type="date"
                       value={editForm.eventDate}
                       onChange={(e) => handleEditChange('eventDate', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                      required
+                      className={inputClassName(Boolean(editFieldErrors.eventDate))}
                     />
+                    {editFieldErrors.eventDate ? <p className="mt-1 text-xs text-red-600">{editFieldErrors.eventDate}</p> : null}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
@@ -893,8 +928,9 @@ export default function EventsManagementPage() {
                       type="date"
                       value={editForm.endDate}
                       onChange={(e) => handleEditChange('endDate', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      className={inputClassName(Boolean(editFieldErrors.endDate))}
                     />
+                    {editFieldErrors.endDate ? <p className="mt-1 text-xs text-red-600">{editFieldErrors.endDate}</p> : null}
                   </div>
                 </div>
 
@@ -905,7 +941,7 @@ export default function EventsManagementPage() {
                       type="text"
                       value={editForm.linkLabel}
                       onChange={(e) => handleEditChange('linkLabel', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      className={inputClassName(Boolean(editFieldErrors.linkLabel))}
                       placeholder="e.g., Register Now"
                     />
                   </div>
@@ -915,9 +951,10 @@ export default function EventsManagementPage() {
                       type="url"
                       value={editForm.linkUrl}
                       onChange={(e) => handleEditChange('linkUrl', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      className={inputClassName(Boolean(editFieldErrors.linkUrl))}
                       placeholder="https://example.com"
                     />
+                    {editFieldErrors.linkUrl ? <p className="mt-1 text-xs text-red-600">{editFieldErrors.linkUrl}</p> : null}
                   </div>
                 </div>
 
