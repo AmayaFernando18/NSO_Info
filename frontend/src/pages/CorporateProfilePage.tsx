@@ -159,7 +159,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Card from '../components/Card';
-import { Building2, Target, Eye, Phone, Mail, Users, ShieldCheck, Workflow, Loader2 } from 'lucide-react';
+import { Building2, Target, Eye, Users, ShieldCheck, Workflow, Loader2 } from 'lucide-react';
 import { fetchPublicCorporateCategories, fetchPublicCorporateMembers } from '../services/corporateService';
 import type { CorporateCategoryDto, CorporateMemberDto } from '../types';
 import { resolveMediaUrl } from '../utils/media';

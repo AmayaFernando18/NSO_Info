@@ -3,7 +3,7 @@ import { Calendar, ExternalLink, X, ChevronLeft, ChevronRight } from 'lucide-rea
 import { fetchPublicEvents } from '../services/eventsService'
 import EventCalendar from '../components/EventCalendar'
 import Card from '../components/Card'
-import type { EventDto, HolidayDto } from '../types'
+import type { EventDto, HolidayDto, PersonalEventDto } from '../types'
 
 const getCategoryBadgeColor = (category: string) => {
   const colors: Record<string, string> = {
@@ -54,9 +54,9 @@ export default function EventsPage() {
     currentPage * itemsPerPage
   )
 
-  const handleEventClick = (item: EventDto | HolidayDto) => {
-    // Only handle EventDto clicks, not holidays
-    if ('eventDate' in item) {
+  const handleEventClick = (item: EventDto | HolidayDto | PersonalEventDto) => {
+    // Open modal only for public EventDto items.
+    if ('category' in item) {
       setSelectedEvent(item)
     }
   }

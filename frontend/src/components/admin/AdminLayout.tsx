@@ -15,6 +15,7 @@ export default function AdminLayout() {
     { to: '/admin/hero', label: 'Hero Management', icon: Image, requirePermission: RBAC_FUNCTION.HERO },
     { to: '/admin/events', label: 'Events Management', icon: Calendar, requirePermission: RBAC_FUNCTION.EVENTS },
     { to: '/admin/corporate', label: 'Corporate Members', icon: Users, requirePermission: RBAC_FUNCTION.CORPORATE },
+    { to: '/admin/gallery', label: 'Gallery Management', icon: Image, requirePermission: RBAC_FUNCTION.GALLERY },
     { to: '/admin/users', label: 'RBAC Users', icon: ShieldCheck, requirePermission: 'superAdminOnly' as const },
   ]
 

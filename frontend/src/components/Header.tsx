@@ -35,6 +35,9 @@ export default function Header() {
             <Link to="/careers" className="text-base text-secondary hover:text-primary transition-colors font-medium">
               Careers
             </Link>
+            <Link to="/gallery" className="text-base text-secondary hover:text-primary transition-colors font-medium">
+              Gallery
+            </Link>
             <Link to="/tenders" className="text-base text-secondary hover:text-primary transition-colors font-medium">
               Procurement
             </Link>
@@ -115,6 +118,13 @@ export default function Header() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Careers
+              </Link>
+              <Link
+                to="/gallery"
+                className="px-4 py-2 hover:bg-muted rounded-lg transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Gallery
               </Link>
               <Link
                 to="/tenders"

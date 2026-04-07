@@ -17,6 +17,9 @@ import HeroManagementPage from "./pages/admin/HeroManagementPage";
 import EventsManagementPage from "./pages/admin/EventsManagementPage";
 import CorporateManagementPage from "./pages/admin/CorporateManagementPage";
 import EventsPage from "./pages/EventsPage";
+import GalleryPage from "./pages/GalleryPage";
+import AlbumDetailPage from "./pages/AlbumDetailPage";
+import GalleryManagementPage from "./pages/admin/GalleryManagementPage";
 import { canAccessAdmin } from "./utils/rbac";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -101,6 +104,8 @@ function AppRoutes() {
         <Route path="/corporate-profile" element={<CorporateProfilePage />} />
         <Route path="/news" element={<NewsPage />} />
         <Route path="/careers" element={<CareersPage />} />
+        <Route path="/gallery" element={<GalleryPage />} />
+        <Route path="/gallery/:id" element={<AlbumDetailPage />} />
         <Route path="/tenders" element={<TenderNoticesPage />} />
         <Route path="/specifications" element={<DownloadSpecificationsPage />} />
         <Route path="/events" element={<EventsPage />} />
@@ -114,6 +119,7 @@ function AppRoutes() {
         <Route path="hero" element={<HeroManagementPage />} />
         <Route path="events" element={<EventsManagementPage />} />
         <Route path="corporate" element={<CorporateManagementPage />} />
+        <Route path="gallery" element={<GalleryManagementPage />} />
       </Route>
     </Routes>
   );

@@ -6,6 +6,7 @@ export const RBAC_FUNCTION = Object.freeze({
   HERO: 'Hero',
   EVENTS: 'Events',
   CORPORATE: 'Corporate',
+  GALLERY: 'Gallery',
 });
 
 // Ordered list form is consumed by schema enums (Mongoose/Zod).
@@ -15,4 +16,5 @@ export const RBAC_FUNCTIONS = Object.freeze([
   RBAC_FUNCTION.HERO,
   RBAC_FUNCTION.EVENTS,
   RBAC_FUNCTION.CORPORATE,
+  RBAC_FUNCTION.GALLERY,
 ]);

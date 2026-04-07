@@ -66,6 +66,42 @@ export interface CorporateCategoryDto {
   updatedAt?: string;
 }
 
+export interface GalleryAlbumDto {
+  id?: string;
+  _id?: string;
+  name: string;
+  description?: string;
+  coverImageUrl?: string;
+  displayOrder?: number;
+  activeStatus?: boolean;
+  isDeleted?: boolean;
+  imageCount?: number;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface GalleryImageDto {
+  id?: string;
+  _id?: string;
+  gallery?: string;
+  title?: string;
+  altText?: string;
+  imageUrl: string;
+  displayOrder?: number;
+  activeStatus?: boolean;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface GalleryAlbumDetailDto {
+  album: GalleryAlbumDto;
+  images: GalleryImageDto[];
+}
+
 export interface NewsDto {
   id?: string;
   _id?: string;
