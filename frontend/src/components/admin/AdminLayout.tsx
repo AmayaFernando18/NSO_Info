@@ -1,5 +1,5 @@
 import { NavLink, Outlet, Link } from 'react-router-dom'
-import { LayoutDashboard, Newspaper, ShieldCheck, Image, ArrowLeft, LogOut, Calendar, Users } from 'lucide-react'
+import { LayoutDashboard, Newspaper, ShieldCheck, Image, ArrowLeft, LogOut, Calendar, Users, Link2 } from 'lucide-react'
 import Logo from '../Logo'
 import { useUser } from '../../context/UserContext'
 import { hasAuthority } from '../../utils/rbac'
@@ -15,6 +15,7 @@ export default function AdminLayout() {
     { to: '/admin/hero', label: 'Hero Management', icon: Image, requirePermission: RBAC_FUNCTION.HERO },
     { to: '/admin/events', label: 'Events Management', icon: Calendar, requirePermission: RBAC_FUNCTION.EVENTS },
     { to: '/admin/corporate', label: 'Corporate Members', icon: Users, requirePermission: RBAC_FUNCTION.CORPORATE },
+    { to: '/admin/quick-access', label: 'Quick Access', icon: Link2, requirePermission: RBAC_FUNCTION.QUICK_ACCESS },
     { to: '/admin/gallery', label: 'Gallery Management', icon: Image, requirePermission: RBAC_FUNCTION.GALLERY },
     { to: '/admin/users', label: 'RBAC Users', icon: ShieldCheck, requirePermission: 'superAdminOnly' as const },
   ]

@@ -9,6 +9,7 @@ import eventsRoutes from './events.js';
 import corporateRoutes from './corporate.js';
 import personalEventsRoutes from './personalEvents.js';
 import galleryRoutes from './gallery.js';
+import quickAccessRoutes from './quickAccess.js';
 
 const router = express.Router();
 
@@ -21,5 +22,6 @@ router.use('/events', eventsRoutes);
 router.use('/personal-events', personalEventsRoutes);
 router.use('/corporate', corporateRoutes);
 router.use('/gallery', galleryRoutes);
+router.use('/quick-access', quickAccessRoutes);
 
 export default router;

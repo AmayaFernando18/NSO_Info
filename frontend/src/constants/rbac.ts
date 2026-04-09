@@ -6,6 +6,7 @@ export const RBAC_FUNCTION = {
   EVENTS: 'Events',
   CORPORATE: 'Corporate',
   GALLERY: 'Gallery',
+  QUICK_ACCESS: 'QuickAccess',
 } as const
 
 // Array variant is used by admin function pickers and union type inference.
@@ -15,6 +16,7 @@ export const RBAC_FUNCTIONS = [
   RBAC_FUNCTION.EVENTS,
   RBAC_FUNCTION.CORPORATE,
   RBAC_FUNCTION.GALLERY,
+  RBAC_FUNCTION.QUICK_ACCESS,
 ] as const
 
 // Narrow string union derived from canonical constant list.

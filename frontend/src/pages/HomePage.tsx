@@ -1,40 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { mockQuickLinks } from '../mocks/quickLinks';
 import { mockHighlights } from '../mocks/highlights';
 import { mockHeroImages } from '../mocks/heroImages';
 import Card from '../components/Card';
 import EventCalendar from '../components/EventCalendar';
 import { Calendar, FileText, Zap, ArrowRight, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, X, ExternalLink, Leaf, BarChart3, Plus, Save, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import {
-  DocumentTextIcon,
-  UserIcon,
-  AcademicCapIcon,
-  Cog6ToothIcon,
-  ShieldCheckIcon,
-  ChartBarIcon,
-  BuildingOfficeIcon,
-} from '@heroicons/react/24/outline';
 import { fetchPublicNews } from '../services/newsService';
 import { fetchPublicHeroSlides } from '../services/heroSlidesService';
 import { fetchCalendarData } from '../services/eventsService';
+import { fetchPublicQuickAccess } from '../services/quickAccessService';
 import { createPersonalEvent, deletePersonalEvent, fetchPersonalEventsByDateRange, updatePersonalEvent } from '../services/personalEventsService';
-import type { NewsDto, EventDto, PersonalEventDto, PersonalEventInput } from '../types';
+import type { NewsDto, EventDto, PersonalEventDto, PersonalEventInput, QuickAccessDto } from '../types';
 import { resolveMediaUrl } from '../utils/media';
 import { useUser } from '../context/UserContext';
+import { resolveQuickAccessIcon } from '../utils/quickAccessIcons';
+import { getQuickAccessLinkMeta } from '../utils/quickAccessLinks';
 
 const iconMap: Record<string, any> = {
   Zap,
   TrendingUp,
   Leaf,
   BarChart3,
-  DocumentTextIcon,
-  UserIcon,
-  AcademicCapIcon,
-  Cog6ToothIcon,
-  ShieldCheckIcon,
-  ChartBarIcon,
-  BuildingOfficeIcon,
 };
 
 export default function HomePage() {
@@ -42,6 +28,7 @@ export default function HomePage() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [newsItems, setNewsItems] = useState<NewsDto[]>([]);
   const [heroSlides, setHeroSlides] = useState(mockHeroImages);
+  const [quickAccessItems, setQuickAccessItems] = useState<QuickAccessDto[]>([]);
   const [selectedNews, setSelectedNews] = useState<NewsDto | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<EventDto[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventDto | null>(null);
@@ -191,10 +178,29 @@ export default function HomePage() {
     loadHeroSlides();
     loadEvents();
 
+    const loadQuickAccess = async () => {
+      try {
+        const data = await fetchPublicQuickAccess();
+        if (isMounted) {
+          setQuickAccessItems(data || []);
+        }
+      } catch {
+        if (isMounted) {
+          setQuickAccessItems([]);
+        }
+      }
+    };
+
+    loadQuickAccess();
+
     return () => {
       isMounted = false;
     };
   }, []);
+  const orderedQuickAccess = useMemo(
+    () => [...quickAccessItems].sort((a, b) => Number(a.order || 0) - Number(b.order || 0)),
+    [quickAccessItems]
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -577,20 +583,42 @@ export default function HomePage() {
             Quick Access
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {mockQuickLinks.slice(0, 8).map((link) => {
-              const Icon = iconMap[link.icon] || Zap;
+            {orderedQuickAccess.slice(0, 8).map((link, index) => {
+              const Icon = resolveQuickAccessIcon(link.icon) || Zap;
+              const id = link.id || link._id || `${link.title}-${index}`;
+              const linkMeta = getQuickAccessLinkMeta(link.url);
+              const Content = (
+                <>
+                  <div className="bg-gradient-to-br from-primary/10 to-accent/10 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <Icon className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-sm text-secondary mb-1">{link.title}</h3>
+                  <p className="text-xs text-gray-500">{link.description}</p>
+                </>
+              );
+
               return (
-                <Card key={link.id} hover>
-                  <Link to={link.url} className="block text-center">
-                    <div className="bg-gradient-to-br from-primary/10 to-accent/10 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3">
-                      <Icon className="h-6 w-6 text-primary" />
-                    </div>
-                    <h3 className="font-semibold text-sm text-secondary mb-1">{link.title}</h3>
-                    <p className="text-xs text-gray-500">{link.description}</p>
-                  </Link>
+                <Card key={id} hover>
+                  {linkMeta.type === 'internal' ? (
+                    <Link to={linkMeta.href} className="block text-center">
+                      {Content}
+                    </Link>
+                  ) : (
+                    <a
+                      href={linkMeta.href}
+                      target={linkMeta.type === 'external' ? '_blank' : undefined}
+                      rel={linkMeta.type === 'external' ? 'noopener noreferrer' : undefined}
+                      className="block text-center"
+                    >
+                      {Content}
+                    </a>
+                  )}
                 </Card>
               );
             })}
+            {orderedQuickAccess.length === 0 && (
+              <p className="text-sm text-gray-500 col-span-full">No quick access links available.</p>
+            )}
           </div>
         </div>
       </div>
