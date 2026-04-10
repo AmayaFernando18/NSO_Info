@@ -15,6 +15,7 @@ import { resolveMediaUrl } from '../utils/media';
 import { useUser } from '../context/UserContext';
 import { resolveQuickAccessIcon } from '../utils/quickAccessIcons';
 import { getQuickAccessLinkMeta } from '../utils/quickAccessLinks';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 
 const iconMap: Record<string, any> = {
   Zap,
@@ -46,6 +47,14 @@ export default function HomePage() {
   const [personalSaving, setPersonalSaving] = useState(false);
   const [personalError, setPersonalError] = useState('');
   const [personalSuccess, setPersonalSuccess] = useState('');
+  const [confirmingAction, setConfirmingAction] = useState(false);
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    intent: 'primary' | 'success' | 'warning' | 'danger';
+    onConfirm: () => Promise<void>;
+  } | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const today = new Date();
     return { year: today.getFullYear(), month: today.getMonth() + 1 };
@@ -308,24 +317,46 @@ export default function HomePage() {
     const id = event.id || event._id;
     if (!id) return;
 
-    const confirmed = window.confirm('Delete this personal event?');
-    if (!confirmed) return;
+    setConfirmState({
+      title: 'Delete Personal Event',
+      description: 'Delete this personal event? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      intent: 'danger',
+      onConfirm: async () => {
+        setPersonalSaving(true);
+        setPersonalError('');
+        setPersonalSuccess('');
 
-    setPersonalSaving(true);
-    setPersonalError('');
-    setPersonalSuccess('');
+        try {
+          await deletePersonalEvent(id);
+          setPersonalEvents((prev) => prev.filter((item) => (item.id || item._id) !== id));
+          if (personalEditingId === id) {
+            setPersonalEditingId(null);
+          }
+          setPersonalSuccess('Personal event deleted successfully.');
+        } catch {
+          setPersonalError('Unable to delete personal event. Please try again.');
+        } finally {
+          setPersonalSaving(false);
+        }
+      },
+    });
+  };
+
+  const closeConfirmDialog = () => {
+    if (confirmingAction) return;
+    setConfirmState(null);
+  };
+
+  const handleConfirmDialog = async () => {
+    if (!confirmState) return;
 
     try {
-      await deletePersonalEvent(id);
-      setPersonalEvents((prev) => prev.filter((item) => (item.id || item._id) !== id));
-      if (personalEditingId === id) {
-        setPersonalEditingId(null);
-      }
-      setPersonalSuccess('Personal event deleted successfully.');
-    } catch {
-      setPersonalError('Unable to delete personal event. Please try again.');
+      setConfirmingAction(true);
+      await confirmState.onConfirm();
+      setConfirmState(null);
     } finally {
-      setPersonalSaving(false);
+      setConfirmingAction(false);
     }
   };
 
@@ -968,6 +999,17 @@ export default function HomePage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={Boolean(confirmState)}
+        title={confirmState?.title || 'Confirm Action'}
+        description={confirmState?.description || ''}
+        confirmLabel={confirmState?.confirmLabel || 'Confirm'}
+        intent={confirmState?.intent || 'primary'}
+        isConfirming={confirmingAction}
+        onCancel={closeConfirmDialog}
+        onConfirm={() => void handleConfirmDialog()}
+      />
     </div>
   );
 }

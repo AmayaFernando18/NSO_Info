@@ -31,6 +31,7 @@ import {
 import type { HeroCarouselImageDto } from '../../types'
 import { resolveMediaUrl } from '../../utils/media'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 
 type HeroFormState = {
   title: string
@@ -65,6 +66,14 @@ export default function HeroManagementPage() {
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState<HeroFormState>(initialForm)
+  const [confirmingAction, setConfirmingAction] = useState(false)
+  const [confirmState, setConfirmState] = useState<{
+    title: string
+    description: string
+    confirmLabel: string
+    intent: 'primary' | 'success' | 'warning' | 'danger'
+    onConfirm: () => Promise<void>
+  } | null>(null)
 
   useEffect(() => {
     void loadSlides()
@@ -250,17 +259,41 @@ export default function HeroManagementPage() {
       setError('You do not have permission to delete slides.')
       return
     }
-    if (!confirm('Delete this hero slide?')) return
+
+    setConfirmState({
+      title: 'Delete Hero Slide',
+      description: 'Delete this hero slide from the admin list? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      intent: 'danger',
+      onConfirm: async () => {
+        try {
+          setSavingRowId(id)
+          await deleteHeroSlide(id)
+          setSuccess('Hero slide deleted.')
+          await loadSlides()
+        } catch (err: any) {
+          setError(err?.response?.data?.error || 'Failed to delete hero slide.')
+        } finally {
+          setSavingRowId(null)
+        }
+      },
+    })
+  }
+
+  const closeConfirmDialog = () => {
+    if (confirmingAction) return
+    setConfirmState(null)
+  }
+
+  const handleConfirmDialog = async () => {
+    if (!confirmState) return
 
     try {
-      setSavingRowId(id)
-      await deleteHeroSlide(id)
-      setSuccess('Hero slide deleted.')
-      await loadSlides()
-    } catch (err: any) {
-      setError(err?.response?.data?.error || 'Failed to delete hero slide.')
+      setConfirmingAction(true)
+      await confirmState.onConfirm()
+      setConfirmState(null)
     } finally {
-      setSavingRowId(null)
+      setConfirmingAction(false)
     }
   }
 
@@ -678,6 +711,17 @@ export default function HeroManagementPage() {
           </p>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={Boolean(confirmState)}
+        title={confirmState?.title || 'Confirm Action'}
+        description={confirmState?.description || ''}
+        confirmLabel={confirmState?.confirmLabel || 'Confirm'}
+        intent={confirmState?.intent || 'primary'}
+        isConfirming={confirmingAction}
+        onCancel={closeConfirmDialog}
+        onConfirm={() => void handleConfirmDialog()}
+      />
     </div>
   )
 }

@@ -21,6 +21,7 @@ import {
 import type { CorporateCategoryDto, CorporateMemberDto } from '../../types'
 import { resolveMediaUrl } from '../../utils/media'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { hasFieldErrors, parseApiValidationErrors, validateCorporateMemberForm } from '../../utils/adminValidation'
 
 type CorporateFormState = {
@@ -99,6 +100,14 @@ export default function CorporateManagementPage() {
   const [editForm, setEditForm] = useState<CorporateFormState>(createInitialFormState)
   const [editUploading, setEditUploading] = useState(false)
   const [closingPanel, setClosingPanel] = useState(false)
+  const [confirmingAction, setConfirmingAction] = useState(false)
+  const [confirmState, setConfirmState] = useState<{
+    title: string
+    description: string
+    confirmLabel: string
+    intent: 'primary' | 'success' | 'warning' | 'danger'
+    onConfirm: () => Promise<void>
+  } | null>(null)
 
   // Auto-dismiss success
   useEffect(() => {
@@ -255,22 +264,28 @@ export default function CorporateManagementPage() {
       return
     }
 
-    if (!confirm('Are you sure you want to delete this member?')) return
-
-    try {
-      setActionLoading((prev) => ({ ...prev, [itemId]: true }))
-      setError('')
-      await removeCorporateMember(itemId)
-      setMembers((prev) => prev.filter((item) => (item.id || item._id) !== itemId))
-      const deleted = await fetchDeletedCorporateMembers()
-      setDeletedMembers(deleted)
-      setSuccess('Corporate member deleted successfully.')
-    } catch (err: any) {
-      const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to delete member.'
-      setError(message)
-    } finally {
-      setActionLoading((prev) => ({ ...prev, [itemId]: false }))
-    }
+    setConfirmState({
+      title: 'Delete Member',
+      description: 'Delete this corporate member? You can restore it later from Deleted.',
+      confirmLabel: 'Delete',
+      intent: 'danger',
+      onConfirm: async () => {
+        try {
+          setActionLoading((prev) => ({ ...prev, [itemId]: true }))
+          setError('')
+          await removeCorporateMember(itemId)
+          setMembers((prev) => prev.filter((item) => (item.id || item._id) !== itemId))
+          const deleted = await fetchDeletedCorporateMembers()
+          setDeletedMembers(deleted)
+          setSuccess('Corporate member deleted successfully.')
+        } catch (err: any) {
+          const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to delete member.'
+          setError(message)
+        } finally {
+          setActionLoading((prev) => ({ ...prev, [itemId]: false }))
+        }
+      },
+    })
   }
 
   const handleRestore = async (itemId: string) => {
@@ -300,20 +315,26 @@ export default function CorporateManagementPage() {
       return
     }
 
-    if (!confirm('Permanently delete this member? This cannot be undone.')) return
-
-    try {
-      setActionLoading((prev) => ({ ...prev, [itemId]: true }))
-      setError('')
-      await permanentlyDeleteCorporateMember(itemId)
-      setDeletedMembers((prev) => prev.filter((item) => (item.id || item._id) !== itemId))
-      setSuccess('Corporate member permanently deleted.')
-    } catch (err: any) {
-      const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to permanently delete member.'
-      setError(message)
-    } finally {
-      setActionLoading((prev) => ({ ...prev, [itemId]: false }))
-    }
+    setConfirmState({
+      title: 'Permanently Delete Member',
+      description: 'Permanently delete this member? This action cannot be undone.',
+      confirmLabel: 'Delete Permanently',
+      intent: 'danger',
+      onConfirm: async () => {
+        try {
+          setActionLoading((prev) => ({ ...prev, [itemId]: true }))
+          setError('')
+          await permanentlyDeleteCorporateMember(itemId)
+          setDeletedMembers((prev) => prev.filter((item) => (item.id || item._id) !== itemId))
+          setSuccess('Corporate member permanently deleted.')
+        } catch (err: any) {
+          const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to permanently delete member.'
+          setError(message)
+        } finally {
+          setActionLoading((prev) => ({ ...prev, [itemId]: false }))
+        }
+      },
+    })
   }
 
   const moveMember = async (index: number, direction: 'up' | 'down') => {
@@ -487,20 +508,43 @@ export default function CorporateManagementPage() {
       return
     }
 
-    if (!confirm('Delete this category? Members will be moved to Uncategorized.')) return
+    setConfirmState({
+      title: 'Delete Category',
+      description: 'Delete this category? Members in this category will move to Uncategorized.',
+      confirmLabel: 'Delete Category',
+      intent: 'warning',
+      onConfirm: async () => {
+        try {
+          setActionLoading((prev) => ({ ...prev, [categoryId]: true }))
+          setError('')
+          await deleteCorporateCategory(categoryId)
+          setCategories((prev) => prev.filter((item) => (item.id || item._id) !== categoryId))
+          setMembers((prev) => prev.map((item) => (getCategoryId(item) === categoryId ? { ...item, category: null } : item)))
+          setSuccess('Corporate category deleted successfully.')
+        } catch (err: any) {
+          const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to delete category.'
+          setError(message)
+        } finally {
+          setActionLoading((prev) => ({ ...prev, [categoryId]: false }))
+        }
+      },
+    })
+  }
+
+  const closeConfirmDialog = () => {
+    if (confirmingAction) return
+    setConfirmState(null)
+  }
+
+  const handleConfirmDialog = async () => {
+    if (!confirmState) return
 
     try {
-      setActionLoading((prev) => ({ ...prev, [categoryId]: true }))
-      setError('')
-      await deleteCorporateCategory(categoryId)
-      setCategories((prev) => prev.filter((item) => (item.id || item._id) !== categoryId))
-      setMembers((prev) => prev.map((item) => (getCategoryId(item) === categoryId ? { ...item, category: null } : item)))
-      setSuccess('Corporate category deleted successfully.')
-    } catch (err: any) {
-      const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to delete category.'
-      setError(message)
+      setConfirmingAction(true)
+      await confirmState.onConfirm()
+      setConfirmState(null)
     } finally {
-      setActionLoading((prev) => ({ ...prev, [categoryId]: false }))
+      setConfirmingAction(false)
     }
   }
 
@@ -1277,6 +1321,17 @@ export default function CorporateManagementPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={Boolean(confirmState)}
+        title={confirmState?.title || 'Confirm Action'}
+        description={confirmState?.description || ''}
+        confirmLabel={confirmState?.confirmLabel || 'Confirm'}
+        intent={confirmState?.intent || 'primary'}
+        isConfirming={confirmingAction}
+        onCancel={closeConfirmDialog}
+        onConfirm={() => void handleConfirmDialog()}
+      />
     </div>
   )
 }

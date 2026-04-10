@@ -7,6 +7,7 @@ import { createNews, fetchAdminNews, uploadNewsImage, approveNews, rejectNews, r
 import type { NewsDto } from '../../types'
 import { resolveMediaUrl } from '../../utils/media'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { hasFieldErrors, parseApiValidationErrors, validateNewsForm } from '../../utils/adminValidation'
 
 type NewsFormState = {
@@ -65,6 +66,14 @@ export default function NewsManagementPage() {
   const [editingItem, setEditingItem] = useState<NewsDto | null>(null)
   const [editForm, setEditForm] = useState<NewsFormState>(createInitialFormState)
   const [editUploading, setEditUploading] = useState(false)
+  const [confirmingAction, setConfirmingAction] = useState(false)
+  const [confirmState, setConfirmState] = useState<{
+    title: string
+    description: string
+    confirmLabel: string
+    intent: 'primary' | 'success' | 'warning' | 'danger'
+    onConfirm: () => Promise<void>
+  } | null>(null)
 
   const sortedRecentNews = useMemo(
     () =>
@@ -244,19 +253,42 @@ export default function NewsManagementPage() {
       return
     }
 
-    if (!confirm('Are you sure you want to delete this news item?')) return
+    setConfirmState({
+      title: 'Delete News Item',
+      description: 'Are you sure you want to delete this news item? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      intent: 'danger',
+      onConfirm: async () => {
+        try {
+          setActionLoading((prev) => ({ ...prev, [itemId]: true }))
+          setError('')
+          await removeNews(itemId)
+          setNewsItems((prev) => prev.filter((item) => (item.id || item._id) !== itemId))
+          setSuccess('News item deleted successfully.')
+        } catch (err: any) {
+          const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to delete news.'
+          setError(message)
+        } finally {
+          setActionLoading((prev) => ({ ...prev, [itemId]: false }))
+        }
+      },
+    })
+  }
+
+  const closeConfirmDialog = () => {
+    if (confirmingAction) return
+    setConfirmState(null)
+  }
+
+  const handleConfirmDialog = async () => {
+    if (!confirmState) return
 
     try {
-      setActionLoading((prev) => ({ ...prev, [itemId]: true }))
-      setError('')
-      await removeNews(itemId)
-      setNewsItems((prev) => prev.filter((item) => (item.id || item._id) !== itemId))
-      setSuccess('News item deleted successfully.')
-    } catch (err: any) {
-      const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to delete news.'
-      setError(message)
+      setConfirmingAction(true)
+      await confirmState.onConfirm()
+      setConfirmState(null)
     } finally {
-      setActionLoading((prev) => ({ ...prev, [itemId]: false }))
+      setConfirmingAction(false)
     }
   }
 
@@ -655,6 +687,17 @@ export default function NewsManagementPage() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={Boolean(confirmState)}
+        title={confirmState?.title || 'Confirm Action'}
+        description={confirmState?.description || ''}
+        confirmLabel={confirmState?.confirmLabel || 'Confirm'}
+        intent={confirmState?.intent || 'primary'}
+        isConfirming={confirmingAction}
+        onCancel={closeConfirmDialog}
+        onConfirm={() => void handleConfirmDialog()}
+      />
 
       {/* Reject Modal */}
       {rejectModalOpen && (

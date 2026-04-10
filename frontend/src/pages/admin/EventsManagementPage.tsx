@@ -30,6 +30,7 @@ import {
 } from '../../services/eventsService'
 import type { EventDto, EventCategory } from '../../types'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { hasFieldErrors, parseApiValidationErrors, validateEventForm } from '../../utils/adminValidation'
 
 type EventFormState = {
@@ -120,6 +121,14 @@ export default function EventsManagementPage() {
   const [editForm, setEditForm] = useState<EventFormState>(createInitialFormState)
   const [editError, setEditError] = useState('')
   const [editFieldErrors, setEditFieldErrors] = useState<Partial<Record<keyof EventFormState, string>>>({})
+  const [confirmingAction, setConfirmingAction] = useState(false)
+  const [confirmState, setConfirmState] = useState<{
+    title: string
+    description: string
+    confirmLabel: string
+    intent: 'primary' | 'success' | 'warning' | 'danger'
+    onConfirm: () => Promise<void>
+  } | null>(null)
 
   useEffect(() => {
     if (!success) return
@@ -286,22 +295,30 @@ export default function EventsManagementPage() {
       return
     }
 
-    try {
-      setActionLoading((prev) => ({ ...prev, [itemId]: true }))
-      setError('')
-      await removeEvent(itemId)
-      const deletedItem = events.find((e) => (e.id || e._id) === itemId)
-      setEvents((prev) => prev.filter((item) => (item.id || item._id) !== itemId))
-      if (deletedItem) {
-        setDeletedEvents((prev) => [{ ...deletedItem, isDeleted: true }, ...prev])
-      }
-      setSuccess('Event moved to deleted items.')
-    } catch (err: any) {
-      const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to delete event.'
-      setError(message)
-    } finally {
-      setActionLoading((prev) => ({ ...prev, [itemId]: false }))
-    }
+    setConfirmState({
+      title: 'Delete Event',
+      description: 'Move this event to Deleted items? You can restore it later.',
+      confirmLabel: 'Delete',
+      intent: 'danger',
+      onConfirm: async () => {
+        try {
+          setActionLoading((prev) => ({ ...prev, [itemId]: true }))
+          setError('')
+          await removeEvent(itemId)
+          const deletedItem = events.find((e) => (e.id || e._id) === itemId)
+          setEvents((prev) => prev.filter((item) => (item.id || item._id) !== itemId))
+          if (deletedItem) {
+            setDeletedEvents((prev) => [{ ...deletedItem, isDeleted: true }, ...prev])
+          }
+          setSuccess('Event moved to deleted items.')
+        } catch (err: any) {
+          const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to delete event.'
+          setError(message)
+        } finally {
+          setActionLoading((prev) => ({ ...prev, [itemId]: false }))
+        }
+      },
+    })
   }
 
   const handleRestore = async (itemId: string) => {
@@ -331,21 +348,42 @@ export default function EventsManagementPage() {
       return
     }
 
-    if (!window.confirm('Are you sure you want to permanently delete this event? This action cannot be undone.')) {
-      return
-    }
+    setConfirmState({
+      title: 'Permanently Delete Event',
+      description: 'Are you sure you want to permanently delete this event? This action cannot be undone.',
+      confirmLabel: 'Delete Permanently',
+      intent: 'danger',
+      onConfirm: async () => {
+        try {
+          setActionLoading((prev) => ({ ...prev, [itemId]: true }))
+          setError('')
+          await permanentlyDeleteEvent(itemId)
+          setDeletedEvents((prev) => prev.filter((item) => (item.id || item._id) !== itemId))
+          setSuccess('Event permanently deleted.')
+        } catch (err: any) {
+          const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to permanently delete event.'
+          setError(message)
+        } finally {
+          setActionLoading((prev) => ({ ...prev, [itemId]: false }))
+        }
+      },
+    })
+  }
+
+  const closeConfirmDialog = () => {
+    if (confirmingAction) return
+    setConfirmState(null)
+  }
+
+  const handleConfirmDialog = async () => {
+    if (!confirmState) return
 
     try {
-      setActionLoading((prev) => ({ ...prev, [itemId]: true }))
-      setError('')
-      await permanentlyDeleteEvent(itemId)
-      setDeletedEvents((prev) => prev.filter((item) => (item.id || item._id) !== itemId))
-      setSuccess('Event permanently deleted.')
-    } catch (err: any) {
-      const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to permanently delete event.'
-      setError(message)
+      setConfirmingAction(true)
+      await confirmState.onConfirm()
+      setConfirmState(null)
     } finally {
-      setActionLoading((prev) => ({ ...prev, [itemId]: false }))
+      setConfirmingAction(false)
     }
   }
 
@@ -840,6 +878,17 @@ export default function EventsManagementPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={Boolean(confirmState)}
+        title={confirmState?.title || 'Confirm Action'}
+        description={confirmState?.description || ''}
+        confirmLabel={confirmState?.confirmLabel || 'Confirm'}
+        intent={confirmState?.intent || 'primary'}
+        isConfirming={confirmingAction}
+        onCancel={closeConfirmDialog}
+        onConfirm={() => void handleConfirmDialog()}
+      />
 
       {/* Edit Modal */}
       {editModalOpen && editingItem && (

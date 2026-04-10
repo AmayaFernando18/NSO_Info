@@ -30,6 +30,7 @@ import {
 } from '../../services/galleryService'
 import type { GalleryAlbumDto, GalleryImageDto } from '../../types'
 import { resolveMediaUrl } from '../../utils/media'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 
 type AlbumFormState = {
   name: string
@@ -90,6 +91,14 @@ export default function GalleryManagementPage() {
 
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [confirmingAction, setConfirmingAction] = useState(false)
+  const [confirmState, setConfirmState] = useState<{
+    title: string
+    description: string
+    confirmLabel: string
+    intent: 'primary' | 'success' | 'warning' | 'danger'
+    onConfirm: () => Promise<void>
+  } | null>(null)
 
   const orderedAlbums = useMemo(
     () => [...albums].sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0)),
@@ -358,19 +367,25 @@ export default function GalleryManagementPage() {
       return
     }
 
-    if (!confirm('Delete this album and all its images?')) return
-
-    try {
-      setSaving(true)
-      setError('')
-      await deleteGalleryAlbum(albumId)
-      setSuccess('Album deleted successfully.')
-      await loadAlbums()
-    } catch (err: any) {
-      setError(err?.response?.data?.error || 'Failed to delete album.')
-    } finally {
-      setSaving(false)
-    }
+    setConfirmState({
+      title: 'Delete Album',
+      description: 'Delete this album and all of its images? This action cannot be undone.',
+      confirmLabel: 'Delete Album',
+      intent: 'danger',
+      onConfirm: async () => {
+        try {
+          setSaving(true)
+          setError('')
+          await deleteGalleryAlbum(albumId)
+          setSuccess('Album deleted successfully.')
+          await loadAlbums()
+        } catch (err: any) {
+          setError(err?.response?.data?.error || 'Failed to delete album.')
+        } finally {
+          setSaving(false)
+        }
+      },
+    })
   }
 
   const handleDeleteImage = async (imageId: string) => {
@@ -379,21 +394,44 @@ export default function GalleryManagementPage() {
       return
     }
 
-    if (!confirm('Delete this image?')) return
+    setConfirmState({
+      title: 'Delete Image',
+      description: 'Delete this image from the selected album? This action cannot be undone.',
+      confirmLabel: 'Delete Image',
+      intent: 'danger',
+      onConfirm: async () => {
+        try {
+          setSaving(true)
+          setError('')
+          await deleteGalleryImage(imageId)
+          setSuccess('Image deleted successfully.')
+          if (selectedAlbumId) {
+            await loadImages(selectedAlbumId)
+            await loadAlbums()
+          }
+        } catch (err: any) {
+          setError(err?.response?.data?.error || 'Failed to delete image.')
+        } finally {
+          setSaving(false)
+        }
+      },
+    })
+  }
+
+  const closeConfirmDialog = () => {
+    if (confirmingAction) return
+    setConfirmState(null)
+  }
+
+  const handleConfirmDialog = async () => {
+    if (!confirmState) return
 
     try {
-      setSaving(true)
-      setError('')
-      await deleteGalleryImage(imageId)
-      setSuccess('Image deleted successfully.')
-      if (selectedAlbumId) {
-        await loadImages(selectedAlbumId)
-        await loadAlbums()
-      }
-    } catch (err: any) {
-      setError(err?.response?.data?.error || 'Failed to delete image.')
+      setConfirmingAction(true)
+      await confirmState.onConfirm()
+      setConfirmState(null)
     } finally {
-      setSaving(false)
+      setConfirmingAction(false)
     }
   }
 
@@ -917,6 +955,17 @@ export default function GalleryManagementPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={Boolean(confirmState)}
+        title={confirmState?.title || 'Confirm Action'}
+        description={confirmState?.description || ''}
+        confirmLabel={confirmState?.confirmLabel || 'Confirm'}
+        intent={confirmState?.intent || 'primary'}
+        isConfirming={confirmingAction}
+        onCancel={closeConfirmDialog}
+        onConfirm={() => void handleConfirmDialog()}
+      />
     </div>
   )
 }

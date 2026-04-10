@@ -33,6 +33,7 @@ import {
 } from '../../services/quickAccessService'
 import type { QuickAccessDto } from '../../types'
 import { getQuickAccessIconOptions, resolveQuickAccessIcon } from '../../utils/quickAccessIcons'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 
 const initialForm: QuickAccessInput = {
   title: '',
@@ -132,6 +133,14 @@ export default function AdminQuickAccessPage() {
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
+  const [confirmingAction, setConfirmingAction] = useState(false)
+  const [confirmState, setConfirmState] = useState<{
+    title: string
+    description: string
+    confirmLabel: string
+    intent: 'primary' | 'success' | 'warning' | 'danger'
+    onConfirm: () => Promise<void>
+  } | null>(null)
 
   useEffect(() => {
     void loadItems()
@@ -340,18 +349,24 @@ export default function AdminQuickAccessPage() {
       return
     }
 
-    if (!confirm('Delete this quick access item?')) return
-
-    try {
-      setSavingRowId(id)
-      await deleteQuickAccess(id)
-      setSuccess('Quick access item deleted.')
-      await loadItems()
-    } catch (err: any) {
-      setError(err?.response?.data?.error || 'Failed to delete quick access item.')
-    } finally {
-      setSavingRowId(null)
-    }
+    setConfirmState({
+      title: 'Delete Quick Access Item',
+      description: 'Delete this quick access item? It can be restored from the Deleted tab later.',
+      confirmLabel: 'Delete',
+      intent: 'danger',
+      onConfirm: async () => {
+        try {
+          setSavingRowId(id)
+          await deleteQuickAccess(id)
+          setSuccess('Quick access item deleted.')
+          await loadItems()
+        } catch (err: any) {
+          setError(err?.response?.data?.error || 'Failed to delete quick access item.')
+        } finally {
+          setSavingRowId(null)
+        }
+      },
+    })
   }
 
   const handleRestore = async (id: string) => {
@@ -370,17 +385,41 @@ export default function AdminQuickAccessPage() {
 
   const handlePermanentDelete = async (id: string) => {
     if (!canDelete) return
-    if (!confirm('Permanently delete this quick access item?')) return
+
+    setConfirmState({
+      title: 'Permanently Delete Item',
+      description: 'Permanently delete this quick access item? This cannot be undone.',
+      confirmLabel: 'Delete Permanently',
+      intent: 'danger',
+      onConfirm: async () => {
+        try {
+          setSavingRowId(id)
+          await permanentlyDeleteQuickAccess(id)
+          setSuccess('Quick access item permanently deleted.')
+          await loadItems()
+        } catch (err: any) {
+          setError(err?.response?.data?.error || 'Failed to permanently delete quick access item.')
+        } finally {
+          setSavingRowId(null)
+        }
+      },
+    })
+  }
+
+  const closeConfirmDialog = () => {
+    if (confirmingAction) return
+    setConfirmState(null)
+  }
+
+  const handleConfirmDialog = async () => {
+    if (!confirmState) return
 
     try {
-      setSavingRowId(id)
-      await permanentlyDeleteQuickAccess(id)
-      setSuccess('Quick access item permanently deleted.')
-      await loadItems()
-    } catch (err: any) {
-      setError(err?.response?.data?.error || 'Failed to permanently delete quick access item.')
+      setConfirmingAction(true)
+      await confirmState.onConfirm()
+      setConfirmState(null)
     } finally {
-      setSavingRowId(null)
+      setConfirmingAction(false)
     }
   }
 
@@ -847,6 +886,17 @@ export default function AdminQuickAccessPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={Boolean(confirmState)}
+        title={confirmState?.title || 'Confirm Action'}
+        description={confirmState?.description || ''}
+        confirmLabel={confirmState?.confirmLabel || 'Confirm'}
+        intent={confirmState?.intent || 'primary'}
+        isConfirming={confirmingAction}
+        onCancel={closeConfirmDialog}
+        onConfirm={() => void handleConfirmDialog()}
+      />
     </div>
   )
 }
