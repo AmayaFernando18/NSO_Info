@@ -22,6 +22,8 @@ import type { CorporateCategoryDto, CorporateMemberDto } from '../../types'
 import { resolveMediaUrl } from '../../utils/media'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import ActionButton from '../../components/ui/ActionButton'
+import ToggleSwitch from '../../components/ui/ToggleSwitch'
 import { hasFieldErrors, parseApiValidationErrors, validateCorporateMemberForm } from '../../utils/adminValidation'
 
 type CorporateFormState = {
@@ -652,23 +654,20 @@ export default function CorporateManagementPage() {
                         placeholder="e.g. Board of Directors"
                       />
                       <div className="flex items-center justify-between">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={categoryForm.activeStatus}
-                            onChange={(e) => handleCategoryChange('activeStatus', e.target.checked)}
-                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/30"
-                          />
-                          <span className="text-sm text-gray-600">Active</span>
-                        </label>
-                        <button
+                        <ToggleSwitch
+                          checked={categoryForm.activeStatus}
+                          onChange={(checked) => handleCategoryChange('activeStatus', checked)}
+                          label="Active"
+                        />
+                        <ActionButton
+                          label={categorySubmitting ? 'Adding...' : 'Add'}
+                          onClick={() => {}}
                           type="submit"
                           disabled={categorySubmitting}
-                          className="px-4 py-2 bg-secondary text-white text-sm font-medium rounded-xl hover:bg-secondary/90 disabled:bg-gray-300 transition-all flex items-center gap-1.5"
-                        >
-                          {categorySubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                          {categorySubmitting ? 'Adding...' : 'Add'}
-                        </button>
+                          icon={categorySubmitting ? Loader2 : undefined}
+                          variant="primary"
+                          className={categorySubmitting ? '[&>svg]:animate-spin' : ''}
+                        />
                       </div>
                     </form>
 
@@ -691,31 +690,25 @@ export default function CorporateManagementPage() {
                                     onChange={(e) => setCategoryEditForm((prev) => ({ ...prev, name: e.target.value }))}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
                                   />
-                                  <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      checked={categoryEditForm.activeStatus}
-                                      onChange={(e) => setCategoryEditForm((prev) => ({ ...prev, activeStatus: e.target.checked }))}
-                                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/30"
-                                    />
-                                    <span className="text-xs text-gray-600">Active</span>
-                                  </label>
+                                  <ToggleSwitch
+                                    checked={categoryEditForm.activeStatus}
+                                    onChange={(checked) => setCategoryEditForm((prev) => ({ ...prev, activeStatus: checked }))}
+                                    label="Active"
+                                  />
                                   <div className="flex gap-2">
-                                    <button
-                                      type="button"
+                                    <ActionButton
+                                      label="Save"
                                       onClick={handleCategoryEditSubmit}
                                       disabled={isBusy}
-                                      className="flex-1 bg-primary text-white py-2 rounded-lg text-sm font-medium hover:bg-primary/90 disabled:bg-gray-300 transition"
-                                    >
-                                      Save
-                                    </button>
-                                    <button
-                                      type="button"
+                                      variant="primary"
+                                      className="flex-1"
+                                    />
+                                    <ActionButton
+                                      label="Cancel"
                                       onClick={() => setCategoryEditingId('')}
-                                      className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition"
-                                    >
-                                      Cancel
-                                    </button>
+                                      variant="neutral"
+                                      className="flex-1"
+                                    />
                                   </div>
                                 </div>
                               ) : (
@@ -725,12 +718,24 @@ export default function CorporateManagementPage() {
                                     <span className="text-sm font-medium text-gray-800 truncate">{category.name}</span>
                                   </div>
                                   <div className="flex items-center gap-1">
-                                    <button type="button" onClick={() => handleCategoryEditClick(category)} className="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/5 transition" title="Edit">
-                                      <Pencil className="h-3.5 w-3.5" />
-                                    </button>
-                                    <button type="button" onClick={() => id && handleCategoryDelete(id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition" title="Delete" disabled={isBusy}>
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </button>
+                                    <ActionButton
+                                      label="Edit"
+                                      onClick={() => handleCategoryEditClick(category)}
+                                      icon={Pencil}
+                                      variant="edit"
+                                      iconOnly
+                                      size="xs"
+                                    />
+                                    <ActionButton
+                                      label="Delete"
+                                      onClick={() => id && handleCategoryDelete(id)}
+                                      disabled={isBusy}
+                                      icon={isBusy ? Loader2 : Trash2}
+                                      variant="delete"
+                                      iconOnly
+                                      size="xs"
+                                      className={isBusy ? '[&>svg]:animate-spin' : ''}
+                                    />
                                   </div>
                                 </div>
                               )}
@@ -870,33 +875,22 @@ export default function CorporateManagementPage() {
                         {fieldErrors.imageUrl ? <p className="mt-1.5 text-xs text-red-600">{fieldErrors.imageUrl}</p> : null}
                       </div>
 
-                      <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-xl border border-gray-100">
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">Profile Status</p>
-                          <p className="text-xs text-gray-500">Publicly visible on site</p>
-                        </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={form.activeStatus}
-                            onChange={(e) => handleChange('activeStatus', e.target.checked)}
-                            className="sr-only peer"
-                          />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-                        </label>
-                      </div>
+                      <ToggleSwitch
+                        checked={form.activeStatus}
+                        onChange={(checked) => handleChange('activeStatus', checked)}
+                        label="Profile Status"
+                      />
 
-                      <button
+                      <ActionButton
+                        label={submitting || uploadingImage ? 'Processing...' : 'Create Member Profile'}
+                        onClick={() => {}}
                         type="submit"
                         disabled={submitting || uploadingImage || selectableCategories.length === 0}
-                        className="w-full bg-primary text-white py-3 rounded-xl font-medium hover:bg-primary/90 hover:shadow-lg disabled:bg-gray-300 disabled:shadow-none transition-all flex items-center justify-center gap-2"
-                      >
-                        {submitting || uploadingImage ? (
-                          <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</>
-                        ) : (
-                          'Create Member Profile'
-                        )}
-                      </button>
+                        icon={submitting || uploadingImage ? Loader2 : undefined}
+                        variant="primary"
+                        size="md"
+                        className={`w-full ${submitting || uploadingImage ? '[&>svg]:animate-spin' : ''}`}
+                      />
                     </form>
                   </div>
                 </div>
@@ -912,38 +906,18 @@ export default function CorporateManagementPage() {
                   {showDeletedTab ? 'Deleted Profiles' : 'Active Profiles'}
                 </h2>
                 <div className="flex p-0.5 bg-gray-100 rounded-xl">
-                  <button
+                  <ActionButton
+                    label={`Active (${members.length})`}
                     onClick={() => setShowDeletedTab(false)}
-                    className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-                      !showDeletedTab ? 'text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    {!showDeletedTab && (
-                      <div className="absolute inset-0 bg-primary rounded-lg transition-all duration-300" />
-                    )}
-                    <span className="relative flex items-center gap-2">
-                      Active
-                      <span className={`px-1.5 py-0.5 rounded-md text-[10px] uppercase font-bold tracking-wider ${!showDeletedTab ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-500'}`}>
-                        {members.length}
-                      </span>
-                    </span>
-                  </button>
-                  <button
+                    variant={!showDeletedTab ? 'primary' : 'view'}
+                    size="xs"
+                  />
+                  <ActionButton
+                    label={`Deleted (${deletedMembers.length})`}
                     onClick={() => setShowDeletedTab(true)}
-                    className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-                      showDeletedTab ? 'text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    {showDeletedTab && (
-                      <div className="absolute inset-0 bg-red-600 rounded-lg transition-all duration-300" />
-                    )}
-                    <span className="relative flex items-center gap-2">
-                      Deleted
-                      <span className={`px-1.5 py-0.5 rounded-md text-[10px] uppercase font-bold tracking-wider ${showDeletedTab ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-500'}`}>
-                        {deletedMembers.length}
-                      </span>
-                    </span>
-                  </button>
+                    variant={showDeletedTab ? 'delete' : 'view'}
+                    size="xs"
+                  />
                 </div>
               </div>
 
@@ -1059,65 +1033,71 @@ export default function CorporateManagementPage() {
                                       <>
                                         {canEdit && (
                                           <div className="flex items-center bg-white rounded-lg p-1 border border-primary/20 shadow-sm mr-2 opacity-100 transition-opacity">
-                                            <button
+                                            <ActionButton
+                                              label="Move Up"
                                               onClick={() => void moveMember(index, 'up')}
                                               disabled={index === 0 || reordering}
-                                              className="p-1 rounded text-primary/70 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent"
-                                              title="Move Up"
-                                            >
-                                              <ArrowUp className="h-3.5 w-3.5" />
-                                            </button>
+                                              icon={ArrowUp}
+                                              variant="view"
+                                              iconOnly
+                                              size="xs"
+                                            />
                                             <div className="w-px h-4 bg-gray-200 mx-1" />
-                                            <button
+                                            <ActionButton
+                                              label="Move Down"
                                               onClick={() => void moveMember(index, 'down')}
                                               disabled={index === orderedMembers.length - 1 || reordering}
-                                              className="p-1 rounded text-primary/70 hover:text-primary hover:bg-primary/10 disabled:opacity-30 disabled:hover:bg-transparent"
-                                              title="Move Down"
-                                            >
-                                              <ArrowDown className="h-3.5 w-3.5" />
-                                            </button>
+                                              icon={ArrowDown}
+                                              variant="view"
+                                              iconOnly
+                                              size="xs"
+                                            />
                                           </div>
                                         )}
                                         {canEdit && (
-                                          <button
+                                          <ActionButton
+                                            label="Edit"
                                             onClick={() => handleEditClick(item)}
-                                            className="px-3.5 py-1.5 rounded-lg text-sm font-medium bg-secondary text-white hover:bg-secondary/90 hover:shadow-md transition-all flex items-center gap-1.5"
-                                          >
-                                            <Pencil className="h-3.5 w-3.5" /> Edit
-                                          </button>
+                                            icon={Pencil}
+                                            variant="edit"
+                                            size="xs"
+                                          />
                                         )}
                                         {canDelete && (
-                                          <button
+                                          <ActionButton
+                                            label={isBusy ? 'Deleting...' : 'Delete'}
                                             onClick={() => id && handleDelete(id)}
                                             disabled={!id || isBusy}
-                                            className="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition-all disabled:opacity-50"
-                                            title="Delete"
-                                          >
-                                            {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                                          </button>
+                                            icon={isBusy ? Loader2 : Trash2}
+                                            variant="delete"
+                                            size="xs"
+                                            className={isBusy ? '[&>svg]:animate-spin' : ''}
+                                          />
                                         )}
                                       </>
                                     ) : (
                                       <>
                                         {canDelete && (
-                                          <button
+                                          <ActionButton
+                                            label={isBusy ? 'Restoring...' : 'Restore'}
                                             onClick={() => id && handleRestore(id)}
                                             disabled={!id || isBusy}
-                                            className="px-3.5 py-1.5 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-all flex items-center gap-1.5 disabled:opacity-50"
-                                          >
-                                            {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-                                            Restore
-                                          </button>
+                                            icon={isBusy ? Loader2 : RotateCcw}
+                                            variant="restore"
+                                            size="xs"
+                                            className={isBusy ? '[&>svg]:animate-spin' : ''}
+                                          />
                                         )}
                                         {canDelete && (
-                                          <button
+                                          <ActionButton
+                                            label={isBusy ? 'Deleting...' : 'Delete Forever'}
                                             onClick={() => id && handlePermanentDelete(id)}
                                             disabled={!id || isBusy}
-                                            className="px-3.5 py-1.5 rounded-lg text-sm font-medium border border-gray-200 text-red-600 hover:bg-red-50 focus:ring-2 focus:ring-red-200 transition-all flex items-center gap-1.5 disabled:opacity-50"
-                                          >
-                                            {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
-                                            Delete Forever
-                                          </button>
+                                            icon={isBusy ? Loader2 : X}
+                                            variant="permanentDelete"
+                                            size="xs"
+                                            className={isBusy ? '[&>svg]:animate-spin' : ''}
+                                          />
                                         )}
                                       </>
                                     )}
@@ -1278,43 +1258,30 @@ export default function CorporateManagementPage() {
                     )}
                   </div>
 
-                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between bg-gray-50/50 p-4 rounded-xl border">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">Profile Status</p>
-                      <p className="text-xs text-gray-500">Public visibility</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={editForm.activeStatus}
-                        onChange={(e) => handleEditChange('activeStatus', e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-                    </label>
-                  </div>
+                  <ToggleSwitch
+                    checked={editForm.activeStatus}
+                    onChange={(checked) => handleEditChange('activeStatus', checked)}
+                    label="Profile Status"
+                  />
                 </div>
               </div>
 
               <div className="p-6 border-t border-border bg-gray-50/80 mt-auto sticky bottom-0">
                 <div className="flex gap-3">
-                  <button
+                  <ActionButton
+                    label="Cancel"
                     onClick={closeEditPanel}
-                    className="flex-1 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm"
-                  >
-                    Cancel
-                  </button>
-                  <button
+                    variant="neutral"
+                    className="flex-1"
+                  />
+                  <ActionButton
+                    label={editingMemberId && actionLoading[editingMemberId] ? 'Saving Changes...' : 'Save Profile'}
                     onClick={handleEditSubmit}
                     disabled={!editingMemberId || actionLoading[editingMemberId] || editUploading}
-                    className="flex-[2] px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 hover:shadow-md disabled:bg-gray-300 disabled:shadow-none transition-all flex items-center justify-center gap-2"
-                  >
-                    {editingMemberId && actionLoading[editingMemberId] ? (
-                      <><Loader2 className="h-4 w-4 animate-spin" /> Saving Changes...</>
-                    ) : (
-                      <><Save className="h-4 w-4" /> Save Profile</>
-                    )}
-                  </button>
+                    icon={editingMemberId && actionLoading[editingMemberId] ? Loader2 : Save}
+                    variant="primary"
+                    className={`flex-[2] ${editingMemberId && actionLoading[editingMemberId] ? '[&>svg]:animate-spin' : ''}`}
+                  />
                 </div>
               </div>
             </div>

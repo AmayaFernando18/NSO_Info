@@ -34,6 +34,7 @@ import {
 import type { QuickAccessDto } from '../../types'
 import { getQuickAccessIconOptions, resolveQuickAccessIcon } from '../../utils/quickAccessIcons'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import ActionButton from '../../components/ui/ActionButton'
 
 const initialForm: QuickAccessInput = {
   title: '',
@@ -470,26 +471,18 @@ export default function AdminQuickAccessPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
+            <ActionButton
+              label="Active"
               onClick={() => setViewMode('active')}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                viewMode === 'active'
-                  ? 'bg-indigo-600 border-indigo-600 text-white'
-                  : 'bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50'
-              }`}
-            >
-              Active
-            </button>
-            <button
+              variant={viewMode === 'active' ? 'primary' : 'view'}
+              size="xs"
+            />
+            <ActionButton
+              label="Deleted"
               onClick={() => setViewMode('deleted')}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                viewMode === 'deleted'
-                  ? 'bg-indigo-600 border-indigo-600 text-white'
-                  : 'bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50'
-              }`}
-            >
-              Deleted
-            </button>
+              variant={viewMode === 'deleted' ? 'delete' : 'view'}
+              size="xs"
+            />
           </div>
         </div>
       </div>
@@ -747,21 +740,20 @@ export default function AdminQuickAccessPage() {
                               </div>
 
                               <div className="flex justify-end gap-2 pt-2 border-t border-border/50">
-                                <button
+                                <ActionButton
+                                  label="Cancel"
                                   onClick={cancelEdit}
-                                  className="px-4 py-2 border border-border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 inline-flex items-center gap-1.5 transition-colors"
-                                >
-                                  <X className="h-4 w-4" />
-                                  Cancel
-                                </button>
-                                <button
+                                  icon={X}
+                                  variant="neutral"
+                                />
+                                <ActionButton
+                                  label={isSavingRow ? 'Saving...' : 'Save Changes'}
                                   onClick={() => void saveEdit(id)}
                                   disabled={isSavingRow}
-                                  className="px-5 py-2 bg-primary text-white rounded-lg text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-60 hover:bg-primary/90 transition-colors"
-                                >
-                                  {isSavingRow ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                  Save Changes
-                                </button>
+                                  icon={isSavingRow ? Loader2 : Save}
+                                  variant="primary"
+                                  className={isSavingRow ? '[&>svg]:animate-spin' : ''}
+                                />
                               </div>
                             </div>
                           ) : (
@@ -783,57 +775,57 @@ export default function AdminQuickAccessPage() {
 
                               <div className="flex flex-col gap-2 sm:items-end">
                                 {canEdit && viewMode === 'active' && (
-                                  <button
+                                  <ActionButton
+                                    label="Edit"
                                     onClick={() => beginEdit(item)}
-                                    className="px-3 py-2 border border-border rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50"
-                                  >
-                                    Edit
-                                  </button>
+                                    variant="edit"
+                                    size="xs"
+                                  />
                                 )}
                                 {canApprove && !item.approved && !item.rejected && viewMode === 'active' && (
                                   <div className="flex gap-2">
-                                    <button
+                                    <ActionButton
+                                      label="Approve"
                                       onClick={() => void handleApprove(id)}
                                       disabled={isSavingRow}
-                                      className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700 disabled:opacity-60"
-                                    >
-                                      Approve
-                                    </button>
-                                    <button
+                                      variant="approve"
+                                      size="xs"
+                                    />
+                                    <ActionButton
+                                      label="Reject"
                                       onClick={() => openRejectModal(id)}
                                       disabled={isSavingRow}
-                                      className="px-3 py-2 bg-amber-500 text-white rounded-lg text-xs font-medium hover:bg-amber-600 disabled:opacity-60"
-                                    >
-                                      Reject
-                                    </button>
+                                      variant="reject"
+                                      size="xs"
+                                    />
                                   </div>
                                 )}
                                 {canDelete && viewMode === 'active' && (
-                                  <button
+                                  <ActionButton
+                                    label="Delete"
                                     onClick={() => void handleDelete(id)}
                                     disabled={isSavingRow}
-                                    className="px-3 py-2 border border-red-200 text-red-600 rounded-lg text-xs font-medium hover:bg-red-50 disabled:opacity-60 inline-flex items-center gap-1"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                    Delete
-                                  </button>
+                                    icon={Trash2}
+                                    variant="delete"
+                                    size="xs"
+                                  />
                                 )}
                                 {canDelete && viewMode === 'deleted' && (
                                   <div className="flex gap-2">
-                                    <button
+                                    <ActionButton
+                                      label="Restore"
                                       onClick={() => void handleRestore(id)}
                                       disabled={isSavingRow}
-                                      className="px-3 py-2 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-medium hover:bg-emerald-50 disabled:opacity-60"
-                                    >
-                                      Restore
-                                    </button>
-                                    <button
+                                      variant="restore"
+                                      size="xs"
+                                    />
+                                    <ActionButton
+                                      label="Delete permanently"
                                       onClick={() => void handlePermanentDelete(id)}
                                       disabled={isSavingRow}
-                                      className="px-3 py-2 border border-red-200 text-red-600 rounded-lg text-xs font-medium hover:bg-red-50 disabled:opacity-60"
-                                    >
-                                      Delete permanently
-                                    </button>
+                                      variant="permanentDelete"
+                                      size="xs"
+                                    />
                                   </div>
                                 )}
                               </div>
@@ -869,18 +861,16 @@ export default function AdminQuickAccessPage() {
                 placeholder="Reason for rejection"
               />
               <div className="flex justify-end gap-2">
-                <button
+                <ActionButton
+                  label="Cancel"
                   onClick={() => setRejectModalOpen(false)}
-                  className="px-4 py-2 border border-border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
+                  variant="neutral"
+                />
+                <ActionButton
+                  label="Reject"
                   onClick={() => void handleReject()}
-                  className="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600"
-                >
-                  Reject
-                </button>
+                  variant="reject"
+                />
               </div>
             </div>
           </div>

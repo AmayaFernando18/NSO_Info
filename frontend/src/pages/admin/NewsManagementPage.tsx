@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { useUser } from '../../context/UserContext'
 import { canPerformAction } from '../../utils/rbac'
 import { RBAC_FUNCTION } from '../../constants/rbac'
-import { AlertCircle, CheckCircle2, FileText, Loader2, Upload, X, Check, XCircle, Trash2, Pencil, Save } from 'lucide-react'
+import { AlertCircle, CheckCircle2, FileText, Loader2, Upload, X, XCircle, Trash2, Pencil, Save } from 'lucide-react'
 import { createNews, fetchAdminNews, uploadNewsImage, approveNews, rejectNews, removeNews, updateNews } from '../../services/newsService'
 import type { NewsDto } from '../../types'
 import { resolveMediaUrl } from '../../utils/media'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import ActionButton from '../../components/ui/ActionButton'
 import { hasFieldErrors, parseApiValidationErrors, validateNewsForm } from '../../utils/adminValidation'
 
 type NewsFormState = {
@@ -634,49 +635,48 @@ export default function NewsManagementPage() {
 
                       <div className="flex items-center gap-2">
                         {canEdit && (
-                          <button
+                          <ActionButton
+                            label="Edit"
                             onClick={() => handleEditClick(item)}
                             disabled={isProcessing}
-                            className="inline-flex items-center gap-1 px-2 py-1 border border-blue-300 text-blue-600 rounded text-xs font-medium hover:bg-blue-50 disabled:opacity-60 disabled:cursor-not-allowed"
-                            title="Edit"
-                          >
-                            <Pencil className="h-3 w-3" />
-                            Edit
-                          </button>
+                            icon={Pencil}
+                            variant="edit"
+                            size="xs"
+                          />
                         )}
 
                         {!item.approved && !item.rejected && canApprove && (
                           <>
-                            <button
+                            <ActionButton
+                              label={isProcessing ? 'Approving...' : 'Approve'}
                               onClick={() => handleApprove(id)}
                               disabled={isProcessing}
-                              className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-500 text-white rounded text-xs font-medium hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed"
-                              title="Approve"
-                            >
-                              {isProcessing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                              Approve
-                            </button>
-                            <button
+                              icon={isProcessing ? Loader2 : CheckCircle2}
+                              variant="approve"
+                              size="xs"
+                              className={isProcessing ? '[&>svg]:animate-spin' : ''}
+                            />
+                            <ActionButton
+                              label="Reject"
                               onClick={() => handleRejectClick(id)}
                               disabled={isProcessing}
-                              className="inline-flex items-center gap-1 px-2 py-1 bg-red-500 text-white rounded text-xs font-medium hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed"
-                              title="Reject"
-                            >
-                              <XCircle className="h-3 w-3" />
-                              Reject
-                            </button>
+                              icon={XCircle}
+                              variant="reject"
+                              size="xs"
+                            />
                           </>
                         )}
 
                         {canDelete && (
-                          <button
+                          <ActionButton
+                            label={isProcessing ? 'Deleting...' : 'Delete'}
                             onClick={() => handleDelete(id)}
                             disabled={isProcessing}
-                            className="inline-flex items-center gap-1 px-2 py-1 border border-red-300 text-red-600 rounded text-xs font-medium hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed"
-                            title="Delete"
-                          >
-                            {isProcessing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-                          </button>
+                            icon={isProcessing ? Loader2 : Trash2}
+                            variant="delete"
+                            size="xs"
+                            className={isProcessing ? '[&>svg]:animate-spin' : ''}
+                          />
                         )}
                       </div>
                     </div>
@@ -715,30 +715,23 @@ export default function NewsManagementPage() {
             />
 
             <div className="mt-6 flex gap-2 justify-end">
-              <button
+              <ActionButton
+                label="Cancel"
                 onClick={() => {
                   setRejectModalOpen(false)
                   setRejectingItemId(null)
                   setRejectionReason('')
                 }}
-                className="px-4 py-2 border border-border rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
+                variant="neutral"
+              />
+              <ActionButton
+                label={rejectingItemId && actionLoading[rejectingItemId] ? 'Rejecting...' : 'Reject News'}
                 onClick={handleRejectConfirm}
                 disabled={!rejectionReason.trim() || (rejectingItemId ? actionLoading[rejectingItemId] : false)}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              >
-                {rejectingItemId && actionLoading[rejectingItemId] ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Rejecting...
-                  </>
-                ) : (
-                  'Reject News'
-                )}
-              </button>
+                icon={rejectingItemId && actionLoading[rejectingItemId] ? Loader2 : XCircle}
+                variant="reject"
+                className={rejectingItemId && actionLoading[rejectingItemId] ? '[&>svg]:animate-spin' : ''}
+              />
             </div>
           </div>
         </div>
@@ -892,29 +885,21 @@ export default function NewsManagementPage() {
 
             {/* Modal Footer */}
             <div className="sticky bottom-0 bg-gray-50 border-t border-border px-6 py-4 flex justify-end gap-3 rounded-b-2xl">
-              <button
+              <ActionButton
+                label="Cancel"
                 onClick={closeEditModal}
-                className="px-5 py-2.5 border border-border rounded-lg hover:bg-gray-100 transition-colors font-medium"
-              >
-                Cancel
-              </button>
-              <button
+                variant="neutral"
+                size="md"
+              />
+              <ActionButton
+                label={editingItem && actionLoading[editingItem.id || editingItem._id || ''] ? 'Saving...' : 'Save Changes'}
                 onClick={handleEditSubmit}
                 disabled={editUploading || (editingItem ? actionLoading[editingItem.id || editingItem._id || ''] : false)}
-                className="px-5 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2 font-medium"
-              >
-                {editingItem && actionLoading[editingItem.id || editingItem._id || ''] ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4" />
-                    Save Changes
-                  </>
-                )}
-              </button>
+                icon={editingItem && actionLoading[editingItem.id || editingItem._id || ''] ? Loader2 : Save}
+                variant="primary"
+                size="md"
+                className={editingItem && actionLoading[editingItem.id || editingItem._id || ''] ? '[&>svg]:animate-spin' : ''}
+              />
             </div>
           </div>
         </div>

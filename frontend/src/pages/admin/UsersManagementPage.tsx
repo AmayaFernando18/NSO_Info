@@ -21,6 +21,8 @@ import type { AuthorityCode, FunctionCode } from '../../types'
 import { RBAC_FUNCTION, RBAC_FUNCTIONS } from '../../constants/rbac'
 import { useUser } from '../../context/UserContext'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
+import ActionButton from '../../components/ui/ActionButton'
+import ToggleSwitch from '../../components/ui/ToggleSwitch'
 
 // Authority descriptions for tooltips
 const AUTHORITY_INFO: Record<AuthorityCode, { label: string; description: string; color: string }> = {
@@ -225,13 +227,7 @@ export default function UsersManagementPage() {
         icon={ShieldCheck}
         actions={
           isSuperAdmin ? (
-            <button
-              onClick={openAddModal}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-accent text-white rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all font-medium"
-            >
-              <Plus className="h-4 w-4" />
-              Add User
-            </button>
+            <ActionButton label="Add User" onClick={openAddModal} icon={Plus} variant="primary" size="md" />
           ) : null
         }
       />
@@ -401,20 +397,20 @@ export default function UsersManagementPage() {
                   {isSuperAdmin && (
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button
+                        <ActionButton
+                          label="Edit User"
                           onClick={() => openEditModal(user)}
-                          className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                          title="Edit User"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
+                          icon={Edit}
+                          variant="edit"
+                          iconOnly
+                        />
+                        <ActionButton
+                          label="Remove Access"
                           onClick={() => setDeleteConfirm(user.username)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Remove Access"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                          icon={Trash2}
+                          variant="delete"
+                          iconOnly
+                        />
                       </div>
                     </td>
                   )}
@@ -508,21 +504,16 @@ export default function UsersManagementPage() {
 
               {/* SuperAdmin Toggle */}
               <div className="p-4 bg-red-50/50 rounded-xl border border-red-100">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formIsSuperAdmin}
-                    onChange={(e) => setFormIsSuperAdmin(e.target.checked)}
-                    className="w-5 h-5 text-red-600 border-red-300 rounded focus:ring-red-500"
-                  />
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-red-600" />
-                    <div>
-                      <span className="font-semibold text-secondary">SuperAdmin</span>
-                      <p className="text-xs text-gray-500">Full access to all functions and user management</p>
-                    </div>
-                  </div>
-                </label>
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="h-5 w-5 text-red-600" />
+                  <span className="font-semibold text-secondary">SuperAdmin</span>
+                </div>
+                <p className="text-xs text-gray-500 mb-3">Full access to all functions and user management</p>
+                <ToggleSwitch
+                  checked={formIsSuperAdmin}
+                  onChange={setFormIsSuperAdmin}
+                  label="Enable SuperAdmin"
+                />
               </div>
 
               {/* Function Permissions */}
@@ -580,13 +571,13 @@ export default function UsersManagementPage() {
                             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                           </div>
                         </div>
-                        <button
-                          type="button"
+                        <ActionButton
+                          label="Remove Permission"
                           onClick={() => removePermission(index)}
-                          className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                          icon={Trash2}
+                          variant="delete"
+                          iconOnly
+                        />
                       </div>
                     ))}
 
@@ -604,30 +595,21 @@ export default function UsersManagementPage() {
 
             {/* Modal Footer */}
             <div className="px-6 py-4 border-t border-border bg-gray-50 flex justify-end gap-3">
-              <button
-                type="button"
+              <ActionButton
+                label="Cancel"
                 onClick={closeModal}
-                className="px-5 py-2.5 border border-border rounded-xl hover:bg-gray-100 transition-colors font-medium text-gray-700"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
+                variant="neutral"
+                size="md"
+              />
+              <ActionButton
+                label={submitting ? 'Saving...' : editingUser ? 'Update User' : 'Add User'}
+                onClick={() => void handleSubmit({ preventDefault: () => {} } as any)}
                 disabled={submitting}
-                className="px-5 py-2.5 bg-gradient-to-r from-primary to-accent text-white rounded-xl hover:shadow-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {submitting ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-4 w-4" />
-                    {editingUser ? 'Update User' : 'Add User'}
-                  </>
-                )}
-              </button>
+                icon={submitting ? RefreshCw : CheckCircle2}
+                variant="primary"
+                size="md"
+                className={submitting ? '[&>svg]:animate-spin' : ''}
+              />
             </div>
           </div>
         </div>
@@ -650,30 +632,20 @@ export default function UsersManagementPage() {
                 This action will revoke all RBAC permissions for this user.
               </p>
               <div className="flex justify-center gap-3">
-                <button
+                <ActionButton
+                  label="Cancel"
                   onClick={() => setDeleteConfirm(null)}
                   disabled={submitting}
-                  className="px-5 py-2.5 border border-border rounded-xl hover:bg-gray-100 transition-colors font-medium text-gray-700"
-                >
-                  Cancel
-                </button>
-                <button
+                  variant="neutral"
+                />
+                <ActionButton
+                  label={submitting ? 'Removing...' : 'Remove Access'}
                   onClick={() => handleDelete(deleteConfirm)}
                   disabled={submitting}
-                  className="px-5 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
-                >
-                  {submitting ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Removing...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="h-4 w-4" />
-                      Remove Access
-                    </>
-                  )}
-                </button>
+                  icon={submitting ? RefreshCw : Trash2}
+                  variant="delete"
+                  className={submitting ? '[&>svg]:animate-spin' : ''}
+                />
               </div>
             </div>
           </div>

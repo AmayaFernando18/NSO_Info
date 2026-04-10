@@ -19,6 +19,13 @@ import {
   getHolidays,
   getCalendarData,
 } from '../controllers/events.controller.js';
+import {
+  createEventCategory,
+  deleteEventCategory,
+  getAdminEventCategories,
+  getPublicEventCategories,
+  updateEventCategory,
+} from '../controllers/eventCategory.controller.js';
 
 const router = express.Router();
 const FUNCTION_NAME = RBAC_FUNCTION.EVENTS;
@@ -26,7 +33,7 @@ const FUNCTION_NAME = RBAC_FUNCTION.EVENTS;
 const eventBodySchema = z.object({
   title: z.string().min(2),
   description: z.string().min(2),
-  category: z.enum(['Meeting', 'Training', 'Workshop', 'Conference', 'Holiday', 'Special Day', 'Coordination', 'Drill', 'Other']),
+  category: z.string().trim().min(2, 'Category is required'),
   eventDate: z.coerce.date(),
   endDate: z.coerce.date().optional().nullable(),
   linkLabel: z.string().optional(),
@@ -34,6 +41,12 @@ const eventBodySchema = z.object({
   isHoliday: z.boolean().optional(),
   isSpecialDay: z.boolean().optional(),
   activeStatus: z.boolean().optional(),
+});
+
+const categoryBodySchema = z.object({
+  name: z.string().trim().min(2, 'Category name must be at least 2 characters'),
+  activeStatus: z.boolean().optional(),
+  displayOrder: z.number().int().min(0, 'Display order must be 0 or greater').optional(),
 });
 
 const createEventSchema = z.object({
@@ -44,6 +57,18 @@ const createEventSchema = z.object({
 
 const updateEventSchema = z.object({
   body: eventBodySchema.partial(),
+  params: z.object({ id: z.string().min(1) }),
+  query: z.object({}),
+});
+
+const createCategorySchema = z.object({
+  body: categoryBodySchema,
+  params: z.object({}),
+  query: z.object({}),
+});
+
+const updateCategorySchema = z.object({
+  body: categoryBodySchema.partial(),
   params: z.object({ id: z.string().min(1) }),
   query: z.object({}),
 });
@@ -154,6 +179,20 @@ router.get('/calendar', getCalendarData);
 
 /**
  * @openapi
+ * /events/categories:
+ *   get:
+ *     summary: List Public Event Categories
+ *     description: Returns active event categories for public usage.
+ *     tags:
+ *       - Events
+ *     responses:
+ *       200:
+ *         description: Event category list
+ */
+router.get('/categories', getPublicEventCategories);
+
+/**
+ * @openapi
  * /events:
  *   get:
  *     summary: List All Events (Admin)
@@ -176,6 +215,104 @@ router.get('/calendar', getCalendarData);
  *         description: All events list
  */
 router.get('/', authenticate, requireAction('view', FUNCTION_NAME), getAdminEvents);
+
+/**
+ * @openapi
+ * /events/categories/admin:
+ *   get:
+ *     summary: List Event Categories (Admin)
+ *     description: Returns all event categories for admin use.
+ *     tags:
+ *       - Events
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Event categories list
+ */
+router.get(
+  '/categories/admin',
+  authenticate,
+  requireAction('view', FUNCTION_NAME),
+  getAdminEventCategories
+);
+
+/**
+ * @openapi
+ * /events/categories/admin:
+ *   post:
+ *     summary: Create Event Category
+ *     description: Create a new event category.
+ *     tags:
+ *       - Events
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       201:
+ *         description: Event category created
+ */
+router.post(
+  '/categories/admin',
+  authenticate,
+  requireAction('create', FUNCTION_NAME),
+  validateRequest(createCategorySchema),
+  createEventCategory
+);
+
+/**
+ * @openapi
+ * /events/categories/admin/{id}:
+ *   put:
+ *     summary: Update Event Category
+ *     description: Update an existing event category.
+ *     tags:
+ *       - Events
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Event category updated
+ */
+router.put(
+  '/categories/admin/:id',
+  authenticate,
+  requireAction('edit', FUNCTION_NAME),
+  validateRequest(updateCategorySchema),
+  updateEventCategory
+);
+
+/**
+ * @openapi
+ * /events/categories/admin/{id}:
+ *   delete:
+ *     summary: Delete Event Category
+ *     description: Delete an event category.
+ *     tags:
+ *       - Events
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Event category deleted
+ */
+router.delete(
+  '/categories/admin/:id',
+  authenticate,
+  requireAction('delete', FUNCTION_NAME),
+  deleteEventCategory
+);
 
 /**
  * @openapi

@@ -32,6 +32,7 @@ import type { HeroCarouselImageDto } from '../../types'
 import { resolveMediaUrl } from '../../utils/media'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import ActionButton from '../../components/ui/ActionButton'
 
 type HeroFormState = {
   title: string
@@ -625,21 +626,20 @@ export default function HeroManagementPage() {
 
                               {/* Edit Actions */}
                               <div className="flex justify-end gap-2 pt-2 border-t border-border/50">
-                                <button
+                                <ActionButton
+                                  label="Cancel"
                                   onClick={cancelEdit}
-                                  className="px-4 py-2 border border-border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 inline-flex items-center gap-1.5 transition-colors"
-                                >
-                                  <X className="h-4 w-4" />
-                                  Cancel
-                                </button>
-                                <button
+                                  icon={X}
+                                  variant="neutral"
+                                />
+                                <ActionButton
+                                  label={isSavingRow ? 'Saving...' : 'Save Changes'}
                                   onClick={() => void saveEdit(id)}
                                   disabled={isSavingRow}
-                                  className="px-5 py-2 bg-primary text-white rounded-lg text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-60 hover:bg-primary/90 transition-colors"
-                                >
-                                  {isSavingRow ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                  Save Changes
-                                </button>
+                                  icon={isSavingRow ? Loader2 : Save}
+                                  variant="primary"
+                                  className={isSavingRow ? '[&>svg]:animate-spin' : ''}
+                                />
                               </div>
                             </div>
                           ) : (
@@ -659,33 +659,32 @@ export default function HeroManagementPage() {
                                 </p>
                                 <div className="flex flex-wrap items-center gap-2">
                                   {canEdit && (
-                                    <button
+                                    <ActionButton
+                                      label="Edit"
                                       onClick={() => beginEdit(slide)}
-                                      className="px-3.5 py-2 border border-border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 inline-flex items-center gap-1.5 transition-colors"
-                                    >
-                                      <Save className="h-4 w-4" />
-                                      Edit
-                                    </button>
+                                      icon={Save}
+                                      variant="edit"
+                                    />
                                   )}
                                   {!slide.approved && canApprove && (
-                                    <button
+                                    <ActionButton
+                                      label={isSavingRow ? 'Approving...' : 'Approve'}
                                       onClick={() => void handleApprove(id)}
                                       disabled={isSavingRow}
-                                      className="px-3.5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-60 hover:bg-emerald-700 transition-colors"
-                                    >
-                                      {isSavingRow ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                                      Approve
-                                    </button>
+                                      icon={isSavingRow ? Loader2 : Check}
+                                      variant="approve"
+                                      className={isSavingRow ? '[&>svg]:animate-spin' : ''}
+                                    />
                                   )}
                                   {canDelete && (
-                                    <button
+                                    <ActionButton
+                                      label={isSavingRow ? 'Deleting...' : 'Delete'}
                                       onClick={() => void handleDelete(id)}
                                       disabled={isSavingRow}
-                                      className="px-3.5 py-2 bg-red-600 text-white rounded-lg text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-60 hover:bg-red-700 transition-colors"
-                                    >
-                                      {isSavingRow ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                      Delete
-                                    </button>
+                                      icon={isSavingRow ? Loader2 : Trash2}
+                                      variant="delete"
+                                      className={isSavingRow ? '[&>svg]:animate-spin' : ''}
+                                    />
                                   )}
                                 </div>
                               </div>

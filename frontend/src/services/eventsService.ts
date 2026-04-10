@@ -1,5 +1,5 @@
 import api from './api'
-import type { EventDto, CalendarDataDto, HolidayDto, EventCategory } from '../types'
+import type { EventDto, CalendarDataDto, HolidayDto, EventCategory, EventCategoryDto, EventCategoryInput } from '../types'
 
 type ListEventsResponse = {
   success: boolean
@@ -10,6 +10,16 @@ type ItemEventResponse = {
   success: boolean
   message?: string
   data: EventDto
+}
+
+type ListCategoryResponse = {
+  success: boolean
+  data: EventCategoryDto[]
+}
+
+type ItemCategoryResponse = {
+  success: boolean
+  data: EventCategoryDto
 }
 
 type HolidaysResponse = {
@@ -64,9 +74,19 @@ export const fetchCalendarData = async (year: number, month: number): Promise<Ca
   return data.data
 }
 
+export const fetchPublicEventCategories = async (): Promise<EventCategoryDto[]> => {
+  const { data } = await api.get<ListCategoryResponse>('/events/categories')
+  return data.data || []
+}
+
 // Admin endpoints (auth required)
 export const fetchAdminEvents = async (): Promise<EventDto[]> => {
   const { data } = await api.get<ListEventsResponse>('/events')
+  return data.data || []
+}
+
+export const fetchAdminEventCategories = async (): Promise<EventCategoryDto[]> => {
+  const { data } = await api.get<ListCategoryResponse>('/events/categories/admin')
   return data.data || []
 }
 
@@ -80,8 +100,21 @@ export const createEvent = async (payload: EventInput): Promise<EventDto> => {
   return data.data
 }
 
+export const createEventCategory = async (payload: EventCategoryInput): Promise<EventCategoryDto> => {
+  const { data } = await api.post<ItemCategoryResponse>('/events/categories/admin', payload)
+  return data.data
+}
+
 export const updateEvent = async (id: string, payload: Partial<EventInput>): Promise<EventDto> => {
   const { data } = await api.put<ItemEventResponse>(`/events/${id}`, payload)
+  return data.data
+}
+
+export const updateEventCategory = async (
+  id: string,
+  payload: Partial<EventCategoryInput>
+): Promise<EventCategoryDto> => {
+  const { data } = await api.put<ItemCategoryResponse>(`/events/categories/admin/${id}`, payload)
   return data.data
 }
 
@@ -106,4 +139,8 @@ export const restoreEvent = async (id: string): Promise<EventDto> => {
 
 export const permanentlyDeleteEvent = async (id: string): Promise<void> => {
   await api.delete(`/events/${id}/permanent`)
+}
+
+export const deleteEventCategory = async (id: string): Promise<void> => {
+  await api.delete(`/events/categories/admin/${id}`)
 }

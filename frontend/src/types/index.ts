@@ -128,7 +128,25 @@ export interface NewsDto {
   deletedBy?: string;
 }
 
-export type EventCategory = 'Meeting' | 'Training' | 'Workshop' | 'Conference' | 'Holiday' | 'Special Day' | 'Coordination' | 'Drill' | 'Other';
+export type EventCategory = string;
+
+export interface EventCategoryDto {
+  id?: string;
+  _id?: string;
+  name: string;
+  activeStatus?: boolean;
+  displayOrder?: number;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface EventCategoryInput {
+  name: string;
+  activeStatus?: boolean;
+  displayOrder?: number;
+}
 
 export interface EventDto {
   id?: string;
@@ -196,12 +214,25 @@ export interface CalendarDataDto {
 }
 
 export interface QuickAccessDto {
-  id: string;
+  id?: string;
+  _id?: string;
   title: string;
   description: string;
   url: string;
   icon: string;
-  category: string;
+  category?: string;
+  order?: number;
+  activeStatus?: boolean;
+  approved?: boolean;
+  approvedBy?: string;
+  approvedAt?: string | null;
+  rejected?: boolean;
+  rejectedBy?: string;
+  rejectedAt?: string | null;
+  rejectionReason?: string;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
+  deletedBy?: string;
 }
 
 export interface ServiceDto {

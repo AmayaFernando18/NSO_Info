@@ -31,6 +31,8 @@ import {
 import type { GalleryAlbumDto, GalleryImageDto } from '../../types'
 import { resolveMediaUrl } from '../../utils/media'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import ActionButton from '../../components/ui/ActionButton'
+import ToggleSwitch from '../../components/ui/ToggleSwitch'
 
 type AlbumFormState = {
   name: string
@@ -546,23 +548,19 @@ export default function GalleryManagementPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {selectedAlbumId && (
-              <button
-                type="button"
+              <ActionButton
+                label="Show all albums"
                 onClick={() => setSelectedAlbumId('')}
-                className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-secondary hover:bg-muted"
-              >
-                Show all albums
-              </button>
+                variant="view"
+              />
             )}
-            <button
-              type="button"
+            <ActionButton
+              label="Create Album"
               onClick={openCreateAlbumModal}
               disabled={!canCreate}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
-            >
-              <Plus className="h-4 w-4" />
-              Create Album
-            </button>
+              icon={Plus}
+              variant="primary"
+            />
           </div>
         </div>
 
@@ -622,45 +620,45 @@ export default function GalleryManagementPage() {
 
                   <div className="px-3 pb-3 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1">
-                      <button
-                        type="button"
+                      <ActionButton
+                        label="Move up"
                         onClick={() => void moveAlbum(albumId, 'up')}
                         disabled={!canEdit || albumIndex <= 0 || movingAlbumId === albumId}
-                        className="p-1.5 rounded-md border border-border text-secondary hover:bg-muted disabled:opacity-50"
-                        title="Move up"
-                      >
-                        <ArrowUp className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
+                        icon={ArrowUp}
+                        variant="view"
+                        iconOnly
+                        size="xs"
+                      />
+                      <ActionButton
+                        label="Move down"
                         onClick={() => void moveAlbum(albumId, 'down')}
                         disabled={!canEdit || albumIndex === orderedAlbums.length - 1 || movingAlbumId === albumId}
-                        className="p-1.5 rounded-md border border-border text-secondary hover:bg-muted disabled:opacity-50"
-                        title="Move down"
-                      >
-                        <ArrowDown className="h-3.5 w-3.5" />
-                      </button>
+                        icon={ArrowDown}
+                        variant="view"
+                        iconOnly
+                        size="xs"
+                      />
                     </div>
 
                     <div className="flex items-center gap-1">
-                      <button
-                        type="button"
+                      <ActionButton
+                        label="Edit album"
                         onClick={() => openEditAlbumModal(album)}
                         disabled={!canEdit}
-                        className="p-1.5 rounded-md text-primary hover:bg-primary/10 disabled:opacity-50"
-                        title="Edit album"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
+                        icon={Pencil}
+                        variant="edit"
+                        iconOnly
+                        size="xs"
+                      />
+                      <ActionButton
+                        label="Delete album"
                         onClick={() => void handleDeleteAlbum(albumId)}
                         disabled={!canDelete}
-                        className="p-1.5 rounded-md text-red-600 hover:bg-red-50 disabled:opacity-50"
-                        title="Delete album"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                        icon={Trash2}
+                        variant="delete"
+                        iconOnly
+                        size="xs"
+                      />
                     </div>
                   </div>
                 </article>
@@ -678,15 +676,13 @@ export default function GalleryManagementPage() {
               {selectedAlbum ? `Selected album: ${selectedAlbum.name}` : 'Select an album to manage images.'}
             </p>
           </div>
-          <button
-            type="button"
+          <ActionButton
+            label="Add Image"
             onClick={openCreateImageModal}
             disabled={!selectedAlbumId || !canCreate}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
-          >
-            <Plus className="h-4 w-4" />
-            Add Image
-          </button>
+            icon={Plus}
+            variant="primary"
+          />
         </div>
 
         {!selectedAlbumId ? (
@@ -725,45 +721,45 @@ export default function GalleryManagementPage() {
 
                     <div className="mt-3 flex items-center justify-between">
                       <div className="flex items-center gap-1">
-                        <button
-                          type="button"
+                        <ActionButton
+                          label="Move up"
                           onClick={() => void moveImage(imageId, 'up')}
                           disabled={!canEdit || index === 0 || movingImageId === imageId}
-                          className="p-1.5 rounded-md border border-border text-secondary hover:bg-muted disabled:opacity-50"
-                          title="Move up"
-                        >
-                          <ArrowUp className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
+                          icon={ArrowUp}
+                          variant="view"
+                          iconOnly
+                          size="xs"
+                        />
+                        <ActionButton
+                          label="Move down"
                           onClick={() => void moveImage(imageId, 'down')}
                           disabled={!canEdit || index === orderedImages.length - 1 || movingImageId === imageId}
-                          className="p-1.5 rounded-md border border-border text-secondary hover:bg-muted disabled:opacity-50"
-                          title="Move down"
-                        >
-                          <ArrowDown className="h-3.5 w-3.5" />
-                        </button>
+                          icon={ArrowDown}
+                          variant="view"
+                          iconOnly
+                          size="xs"
+                        />
                       </div>
 
                       <div className="flex items-center gap-1">
-                        <button
-                          type="button"
+                        <ActionButton
+                          label="Edit image"
                           onClick={() => openEditImageModal(image)}
                           disabled={!canEdit}
-                          className="p-1.5 rounded-md text-primary hover:bg-primary/10 disabled:opacity-50"
-                          title="Edit image"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
+                          icon={Pencil}
+                          variant="edit"
+                          iconOnly
+                          size="xs"
+                        />
+                        <ActionButton
+                          label="Delete image"
                           onClick={() => void handleDeleteImage(imageId)}
                           disabled={!canDelete}
-                          className="p-1.5 rounded-md text-red-600 hover:bg-red-50 disabled:opacity-50"
-                          title="Delete image"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                          icon={Trash2}
+                          variant="delete"
+                          iconOnly
+                          size="xs"
+                        />
                       </div>
                     </div>
                   </div>
@@ -836,35 +832,29 @@ export default function GalleryManagementPage() {
                 </div>
               </div>
 
-              <div className="flex items-end pb-2">
-                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={albumForm.activeStatus}
-                    onChange={(e) => setAlbumForm((prev) => ({ ...prev, activeStatus: e.target.checked }))}
-                    disabled={saving}
-                  />
-                  Active album
-                </label>
-              </div>
+              <ToggleSwitch
+                checked={albumForm.activeStatus}
+                onChange={(checked) => setAlbumForm((prev) => ({ ...prev, activeStatus: checked }))}
+                disabled={saving}
+                label="Active album"
+              />
 
               <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
+                <ActionButton
+                  label="Cancel"
                   onClick={closeAlbumModal}
-                  className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-muted"
+                  variant="neutral"
                   disabled={saving}
-                >
-                  Cancel
-                </button>
-                <button
+                />
+                <ActionButton
+                  label={editingAlbumId ? 'Save Album' : 'Create Album'}
+                  onClick={() => {}}
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
-                >
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingAlbumId ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                  {editingAlbumId ? 'Save Album' : 'Create Album'}
-                </button>
+                  icon={saving ? Loader2 : editingAlbumId ? Save : Plus}
+                  variant="primary"
+                  className={saving ? '[&>svg]:animate-spin' : ''}
+                />
               </div>
             </form>
           </div>
@@ -921,35 +911,29 @@ export default function GalleryManagementPage() {
                 </div>
               </div>
 
-              <div className="flex items-end pb-2">
-                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={imageForm.activeStatus}
-                    onChange={(e) => setImageForm((prev) => ({ ...prev, activeStatus: e.target.checked }))}
-                    disabled={saving}
-                  />
-                  Active image
-                </label>
-              </div>
+              <ToggleSwitch
+                checked={imageForm.activeStatus}
+                onChange={(checked) => setImageForm((prev) => ({ ...prev, activeStatus: checked }))}
+                disabled={saving}
+                label="Active image"
+              />
 
               <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
+                <ActionButton
+                  label="Cancel"
                   onClick={closeImageModal}
-                  className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-muted"
+                  variant="neutral"
                   disabled={saving}
-                >
-                  Cancel
-                </button>
-                <button
+                />
+                <ActionButton
+                  label={editingImageId ? 'Save Image' : 'Add Image'}
+                  onClick={() => {}}
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
-                >
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingImageId ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                  {editingImageId ? 'Save Image' : 'Add Image'}
-                </button>
+                  icon={saving ? Loader2 : editingImageId ? Save : Plus}
+                  variant="primary"
+                  className={saving ? '[&>svg]:animate-spin' : ''}
+                />
               </div>
             </form>
           </div>

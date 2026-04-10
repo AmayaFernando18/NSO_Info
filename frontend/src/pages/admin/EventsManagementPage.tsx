@@ -21,6 +21,10 @@ import {
   createEvent,
   fetchAdminEvents,
   fetchDeletedEvents,
+  fetchAdminEventCategories,
+  createEventCategory,
+  updateEventCategory,
+  deleteEventCategory,
   approveEvent,
   rejectEvent,
   removeEvent,
@@ -28,9 +32,11 @@ import {
   restoreEvent,
   permanentlyDeleteEvent,
 } from '../../services/eventsService'
-import type { EventDto, EventCategory } from '../../types'
+import type { EventDto, EventCategory, EventCategoryDto, EventCategoryInput } from '../../types'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import ActionButton from '../../components/ui/ActionButton'
+import ToggleSwitch from '../../components/ui/ToggleSwitch'
 import { hasFieldErrors, parseApiValidationErrors, validateEventForm } from '../../utils/adminValidation'
 
 type EventFormState = {
@@ -46,7 +52,7 @@ type EventFormState = {
   activeStatus: boolean
 }
 
-const EVENT_CATEGORIES: EventCategory[] = [
+const DEFAULT_EVENT_CATEGORIES: EventCategory[] = [
   'Meeting',
   'Training',
   'Workshop',
@@ -78,7 +84,7 @@ const createInitialFormState = (): EventFormState => ({
 })
 
 const getCategoryBadgeColor = (category: EventCategory) => {
-  const colors: Record<EventCategory, string> = {
+  const colors: Record<string, string> = {
     Meeting: 'bg-blue-100 text-blue-800',
     Training: 'bg-purple-100 text-purple-800',
     Workshop: 'bg-indigo-100 text-indigo-800',
@@ -103,6 +109,19 @@ export default function EventsManagementPage() {
   const [form, setForm] = useState<EventFormState>(createInitialFormState)
   const [events, setEvents] = useState<EventDto[]>([])
   const [deletedEvents, setDeletedEvents] = useState<EventDto[]>([])
+  const [categories, setCategories] = useState<EventCategoryDto[]>([])
+  const [categoryForm, setCategoryForm] = useState<EventCategoryInput>({
+    name: '',
+    activeStatus: true,
+  })
+  const [categoryEditingId, setCategoryEditingId] = useState('')
+  const [categoryEditForm, setCategoryEditForm] = useState<EventCategoryInput>({
+    name: '',
+    activeStatus: true,
+  })
+  const [categorySubmitting, setCategorySubmitting] = useState(false)
+  const [categoryActionLoading, setCategoryActionLoading] = useState<Record<string, boolean>>({})
+  const [categoryFieldErrors, setCategoryFieldErrors] = useState<Partial<Record<keyof EventCategoryInput, string>>>({})
   const [loadingEvents, setLoadingEvents] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -113,6 +132,7 @@ export default function EventsManagementPage() {
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({})
   const [showDeleted, setShowDeleted] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof EventFormState, string>>>({})
 
   // Edit modal state
@@ -142,6 +162,28 @@ export default function EventsManagementPage() {
     [events]
   )
 
+  const orderedCategories = useMemo(
+    () => [...categories].sort((a, b) => a.name.localeCompare(b.name)),
+    [categories]
+  )
+
+  const activeCategories = useMemo(
+    () => orderedCategories.filter((category) => category.activeStatus !== false),
+    [orderedCategories]
+  )
+
+  const activeCategoryOptions = useMemo(() => {
+    const options = activeCategories.map((category) => category.name)
+    return options.length > 0 ? options : DEFAULT_EVENT_CATEGORIES
+  }, [activeCategories])
+
+  const editCategoryOptions = useMemo(() => {
+    if (!editForm.category) return activeCategoryOptions
+    return activeCategoryOptions.includes(editForm.category)
+      ? activeCategoryOptions
+      : [editForm.category, ...activeCategoryOptions]
+  }, [activeCategoryOptions, editForm.category])
+
   const loadEvents = async () => {
     try {
       setLoadingEvents(true)
@@ -163,10 +205,28 @@ export default function EventsManagementPage() {
     }
   }
 
+  const loadCategories = async () => {
+    try {
+      const data = await fetchAdminEventCategories()
+      setCategories(data)
+    } catch (err) {
+      setError('Failed to load event categories.')
+      console.error('Failed to load event categories:', err)
+    }
+  }
+
   useEffect(() => {
     loadEvents()
     loadDeletedEvents()
+    loadCategories()
   }, [])
+
+  useEffect(() => {
+    if (activeCategoryOptions.length === 0) return
+    if (!activeCategoryOptions.includes(form.category)) {
+      setForm((prev) => ({ ...prev, category: activeCategoryOptions[0] }))
+    }
+  }, [activeCategoryOptions, form.category])
 
   const handleChange = (field: keyof EventFormState, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -181,6 +241,131 @@ export default function EventsManagementPage() {
   const resetForm = () => {
     setForm(createInitialFormState())
     setFieldErrors({})
+  }
+
+  const resetCategoryForm = () => {
+    setCategoryForm({ name: '', activeStatus: true })
+    setCategoryFieldErrors({})
+  }
+
+  const getCategoryId = (category: EventCategoryDto) => category.id || category._id || ''
+
+  const handleCategoryFormChange = (field: keyof EventCategoryInput, value: string | number | boolean) => {
+    setCategoryForm((prev) => ({ ...prev, [field]: value }))
+    setCategoryFieldErrors((prev) => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+  }
+
+  const handleCategoryEditChange = (field: keyof EventCategoryInput, value: string | number | boolean) => {
+    setCategoryEditForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleCategoryCreate = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!canCreate) {
+      setError('You do not have permission to create categories.')
+      return
+    }
+
+    const nameValue = categoryForm.name.trim()
+    if (!nameValue) {
+      setCategoryFieldErrors({ name: 'Category name is required.' })
+      return
+    }
+
+    try {
+      setCategorySubmitting(true)
+      const created = await createEventCategory({
+        name: nameValue,
+        activeStatus: categoryForm.activeStatus,
+      })
+      setCategories((prev) => [...prev, created])
+      setSuccess('Event category created successfully.')
+      resetCategoryForm()
+    } catch (err: any) {
+      const parsed = parseApiValidationErrors(err)
+      setCategoryFieldErrors(parsed.fieldErrors as Partial<Record<keyof EventCategoryInput, string>>)
+      setError(parsed.message || 'Failed to create event category.')
+    } finally {
+      setCategorySubmitting(false)
+    }
+  }
+
+  const handleCategoryEditStart = (category: EventCategoryDto) => {
+    const categoryId = getCategoryId(category)
+    if (!categoryId) return
+    setCategoryEditingId(categoryId)
+    setCategoryEditForm({
+      name: category.name,
+      activeStatus: category.activeStatus !== false,
+    })
+  }
+
+  const handleCategoryEditCancel = () => {
+    setCategoryEditingId('')
+    setCategoryEditForm({ name: '', activeStatus: true })
+  }
+
+  const handleCategoryUpdate = async () => {
+    if (!categoryEditingId || !canEdit) {
+      setError('You do not have permission to edit categories.')
+      return
+    }
+
+    const nameValue = categoryEditForm.name.trim()
+    if (!nameValue) {
+      setError('Category name is required.')
+      return
+    }
+
+    try {
+      setCategoryActionLoading((prev) => ({ ...prev, [categoryEditingId]: true }))
+      const updated = await updateEventCategory(categoryEditingId, {
+        name: nameValue,
+        activeStatus: categoryEditForm.activeStatus,
+      })
+      setCategories((prev) =>
+        prev.map((item) => (getCategoryId(item) === categoryEditingId ? updated : item))
+      )
+      setSuccess('Event category updated successfully.')
+      handleCategoryEditCancel()
+    } catch (err: any) {
+      const parsed = parseApiValidationErrors(err)
+      setError(parsed.message || 'Failed to update event category.')
+    } finally {
+      setCategoryActionLoading((prev) => ({ ...prev, [categoryEditingId]: false }))
+    }
+  }
+
+  const handleCategoryDelete = (categoryId: string, categoryName: string) => {
+    if (!canDelete) {
+      setError('You do not have permission to delete categories.')
+      return
+    }
+
+    setConfirmState({
+      title: 'Delete Event Category',
+      description: `Delete "${categoryName}"? Existing events will keep their category name.`,
+      confirmLabel: 'Delete',
+      intent: 'danger',
+      onConfirm: async () => {
+        try {
+          setCategoryActionLoading((prev) => ({ ...prev, [categoryId]: true }))
+          await deleteEventCategory(categoryId)
+          setCategories((prev) => prev.filter((item) => getCategoryId(item) !== categoryId))
+          setSuccess('Event category deleted successfully.')
+        } catch (err: any) {
+          const parsed = parseApiValidationErrors(err)
+          setError(parsed.message || 'Failed to delete event category.')
+        } finally {
+          setCategoryActionLoading((prev) => ({ ...prev, [categoryId]: false }))
+        }
+      },
+    })
   }
 
   const inputClassName = (hasError: boolean) =>
@@ -468,24 +653,23 @@ export default function EventsManagementPage() {
         icon={Calendar}
         actions={
           <>
-            <button
+            <ActionButton
+              label={showDeleted ? 'View Active' : `Deleted (${deletedEvents.length})`}
               onClick={() => setShowDeleted(!showDeleted)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                showDeleted
-                  ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {showDeleted ? 'View Active' : `Deleted (${deletedEvents.length})`}
-            </button>
+              variant={showDeleted ? 'restore' : 'view'}
+            />
+            <ActionButton
+              label="Manage Categories"
+              onClick={() => setCategoryModalOpen(true)}
+              variant="neutral"
+            />
             {canCreate && !showDeleted && (
-              <button
-                onClick={() => setShowCreateForm(!showCreateForm)}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                Create Event
-              </button>
+              <ActionButton
+                label="Create Event"
+                onClick={() => setShowCreateForm(true)}
+                icon={Plus}
+                variant="primary"
+              />
             )}
           </>
         }
@@ -498,9 +682,7 @@ export default function EventsManagementPage() {
           <div className="flex-1">
             <p className="text-red-800 text-sm">{error}</p>
           </div>
-          <button onClick={() => setError('')} className="text-red-600 hover:text-red-800">
-            <X className="h-4 w-4" />
-          </button>
+          <ActionButton label="Dismiss error" onClick={() => setError('')} icon={X} variant="neutral" iconOnly size="xs" />
         </div>
       )}
 
@@ -510,167 +692,145 @@ export default function EventsManagementPage() {
           <div className="flex-1">
             <p className="text-green-800 text-sm">{success}</p>
           </div>
-          <button onClick={() => setSuccess('')} className="text-green-600 hover:text-green-800">
-            <X className="h-4 w-4" />
-          </button>
+          <ActionButton label="Dismiss success" onClick={() => setSuccess('')} icon={X} variant="neutral" iconOnly size="xs" />
         </div>
       )}
 
       {/* Create Event Form */}
       {showCreateForm && canCreate && !showDeleted && (
-        <div className="bg-white border border-border rounded-xl shadow-sm mb-6">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-bold text-secondary">Create New Event</h2>
-          </div>
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={(e) => handleChange('title', e.target.value)}
-                  className={inputClassName(Boolean(fieldErrors.title))}
-                  placeholder="Event title"
-                />
-                {fieldErrors.title ? <p className="mt-1 text-xs text-red-600">{fieldErrors.title}</p> : null}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
-                <select
-                  value={form.category}
-                  onChange={(e) => handleChange('category', e.target.value as EventCategory)}
-                  className={inputClassName(Boolean(fieldErrors.category))}
-                >
-                  {EVENT_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-                {fieldErrors.category ? <p className="mt-1 text-xs text-red-600">{fieldErrors.category}</p> : null}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
-              <textarea
-                value={form.description}
-                onChange={(e) => handleChange('description', e.target.value)}
-                rows={3}
-                className={inputClassName(Boolean(fieldErrors.description))}
-                placeholder="Event description"
-              />
-              {fieldErrors.description ? <p className="mt-1 text-xs text-red-600">{fieldErrors.description}</p> : null}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Event Date *</label>
-                <input
-                  type="date"
-                  value={form.eventDate}
-                  onChange={(e) => handleChange('eventDate', e.target.value)}
-                  className={inputClassName(Boolean(fieldErrors.eventDate))}
-                />
-                {fieldErrors.eventDate ? <p className="mt-1 text-xs text-red-600">{fieldErrors.eventDate}</p> : null}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                <input
-                  type="date"
-                  value={form.endDate}
-                  onChange={(e) => handleChange('endDate', e.target.value)}
-                  className={inputClassName(Boolean(fieldErrors.endDate))}
-                />
-                {fieldErrors.endDate ? <p className="mt-1 text-xs text-red-600">{fieldErrors.endDate}</p> : null}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Link Label</label>
-                <input
-                  type="text"
-                  value={form.linkLabel}
-                  onChange={(e) => handleChange('linkLabel', e.target.value)}
-                  className={inputClassName(Boolean(fieldErrors.linkLabel))}
-                  placeholder="e.g., Register Now"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Link URL</label>
-                <input
-                  type="url"
-                  value={form.linkUrl}
-                  onChange={(e) => handleChange('linkUrl', e.target.value)}
-                  className={inputClassName(Boolean(fieldErrors.linkUrl))}
-                  placeholder="https://example.com"
-                />
-                {fieldErrors.linkUrl ? <p className="mt-1 text-xs text-red-600">{fieldErrors.linkUrl}</p> : null}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.isHoliday}
-                  onChange={(e) => handleChange('isHoliday', e.target.checked)}
-                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                />
-                <span className="text-sm text-gray-700">Holiday</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.isSpecialDay}
-                  onChange={(e) => handleChange('isSpecialDay', e.target.checked)}
-                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                />
-                <span className="text-sm text-gray-700">Special Day</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.activeStatus}
-                  onChange={(e) => handleChange('activeStatus', e.target.checked)}
-                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                />
-                <span className="text-sm text-gray-700">Active</span>
-              </label>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
-              <button
-                type="button"
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-4xl w-full shadow-xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-secondary">Create New Event</h3>
+              <ActionButton
+                label="Close create modal"
                 onClick={() => {
                   resetForm()
                   setShowCreateForm(false)
                 }}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4" />
-                    Create Event
-                  </>
-                )}
-              </button>
+                icon={X}
+                variant="neutral"
+                iconOnly
+              />
             </div>
-          </form>
+            <div className="flex-1 overflow-y-auto p-6">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                    <input
+                      type="text"
+                      value={form.title}
+                      onChange={(e) => handleChange('title', e.target.value)}
+                      className={inputClassName(Boolean(fieldErrors.title))}
+                      placeholder="Event title"
+                    />
+                    {fieldErrors.title ? <p className="mt-1 text-xs text-red-600">{fieldErrors.title}</p> : null}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                    <select
+                      value={form.category}
+                      onChange={(e) => handleChange('category', e.target.value as EventCategory)}
+                      className={inputClassName(Boolean(fieldErrors.category))}
+                    >
+                      {activeCategoryOptions.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                    {fieldErrors.category ? <p className="mt-1 text-xs text-red-600">{fieldErrors.category}</p> : null}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => handleChange('description', e.target.value)}
+                    rows={3}
+                    className={inputClassName(Boolean(fieldErrors.description))}
+                    placeholder="Event description"
+                  />
+                  {fieldErrors.description ? <p className="mt-1 text-xs text-red-600">{fieldErrors.description}</p> : null}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Event Date *</label>
+                    <input
+                      type="date"
+                      value={form.eventDate}
+                      onChange={(e) => handleChange('eventDate', e.target.value)}
+                      className={inputClassName(Boolean(fieldErrors.eventDate))}
+                    />
+                    {fieldErrors.eventDate ? <p className="mt-1 text-xs text-red-600">{fieldErrors.eventDate}</p> : null}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                    <input
+                      type="date"
+                      value={form.endDate}
+                      onChange={(e) => handleChange('endDate', e.target.value)}
+                      className={inputClassName(Boolean(fieldErrors.endDate))}
+                    />
+                    {fieldErrors.endDate ? <p className="mt-1 text-xs text-red-600">{fieldErrors.endDate}</p> : null}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Link Label</label>
+                    <input
+                      type="text"
+                      value={form.linkLabel}
+                      onChange={(e) => handleChange('linkLabel', e.target.value)}
+                      className={inputClassName(Boolean(fieldErrors.linkLabel))}
+                      placeholder="e.g., Register Now"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Link URL</label>
+                    <input
+                      type="url"
+                      value={form.linkUrl}
+                      onChange={(e) => handleChange('linkUrl', e.target.value)}
+                      className={inputClassName(Boolean(fieldErrors.linkUrl))}
+                      placeholder="https://example.com"
+                    />
+                    {fieldErrors.linkUrl ? <p className="mt-1 text-xs text-red-600">{fieldErrors.linkUrl}</p> : null}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <ToggleSwitch checked={form.isHoliday} onChange={(checked) => handleChange('isHoliday', checked)} label="Holiday" />
+                  <ToggleSwitch checked={form.isSpecialDay} onChange={(checked) => handleChange('isSpecialDay', checked)} label="Special Day" />
+                  <ToggleSwitch checked={form.activeStatus} onChange={(checked) => handleChange('activeStatus', checked)} label="Active" />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                  <ActionButton
+                    label="Cancel"
+                    onClick={() => {
+                      resetForm()
+                      setShowCreateForm(false)
+                    }}
+                    type="button"
+                    variant="neutral"
+                  />
+                  <ActionButton
+                    label={submitting ? 'Creating...' : 'Create Event'}
+                    type="submit"
+                    disabled={submitting}
+                    icon={submitting ? Loader2 : Save}
+                    variant="primary"
+                    className={submitting ? '[&>svg]:animate-spin' : ''}
+                  />
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       )}
 
@@ -764,26 +924,23 @@ export default function EventsManagementPage() {
                         <>
                           {canDelete && (
                             <>
-                              <button
+                              <ActionButton
+                                label={isLoading ? 'Restoring...' : 'Restore'}
                                 onClick={() => handleRestore(itemId)}
                                 disabled={isLoading}
-                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
-                                title="Restore"
-                              >
-                                {isLoading ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <RotateCcw className="h-4 w-4" />
-                                )}
-                              </button>
-                              <button
+                                icon={isLoading ? Loader2 : RotateCcw}
+                                variant="restore"
+                                iconOnly
+                                className={isLoading ? '[&>svg]:animate-spin' : ''}
+                              />
+                              <ActionButton
+                                label="Permanently Delete"
                                 onClick={() => handlePermanentDelete(itemId)}
                                 disabled={isLoading}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                                title="Permanently Delete"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                                icon={Trash2}
+                                variant="permanentDelete"
+                                iconOnly
+                              />
                             </>
                           )}
                         </>
@@ -791,47 +948,44 @@ export default function EventsManagementPage() {
                         <>
                           {canApprove && !item.approved && !item.rejected && (
                             <>
-                              <button
+                              <ActionButton
+                                label={isLoading ? 'Approving...' : 'Approve'}
                                 onClick={() => handleApprove(itemId)}
                                 disabled={isLoading}
-                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
-                                title="Approve"
-                              >
-                                {isLoading ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Check className="h-4 w-4" />
-                                )}
-                              </button>
-                              <button
+                                icon={isLoading ? Loader2 : Check}
+                                variant="approve"
+                                iconOnly
+                                className={isLoading ? '[&>svg]:animate-spin' : ''}
+                              />
+                              <ActionButton
+                                label="Reject"
                                 onClick={() => handleRejectClick(itemId)}
                                 disabled={isLoading}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                                title="Reject"
-                              >
-                                <XCircle className="h-4 w-4" />
-                              </button>
+                                icon={XCircle}
+                                variant="reject"
+                                iconOnly
+                              />
                             </>
                           )}
                           {canEdit && (
-                            <button
+                            <ActionButton
+                              label="Edit"
                               onClick={() => handleEditClick(item)}
                               disabled={isLoading}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
-                              title="Edit"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </button>
+                              icon={Pencil}
+                              variant="edit"
+                              iconOnly
+                            />
                           )}
                           {canDelete && (
-                            <button
+                            <ActionButton
+                              label="Delete"
                               onClick={() => handleDelete(itemId)}
                               disabled={isLoading}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                              icon={Trash2}
+                              variant="delete"
+                              iconOnly
+                            />
                           )}
                         </>
                       )}
@@ -857,23 +1011,22 @@ export default function EventsManagementPage() {
               placeholder="Enter rejection reason..."
             />
             <div className="flex justify-end gap-3">
-              <button
+              <ActionButton
+                label="Cancel"
                 onClick={() => {
                   setRejectModalOpen(false)
                   setRejectingItemId(null)
                   setRejectionReason('')
                 }}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
+                variant="neutral"
+              />
+              <ActionButton
+                label="Reject"
                 onClick={handleRejectConfirm}
                 disabled={!rejectionReason.trim()}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-              >
-                Reject
-              </button>
+                variant="reject"
+                icon={XCircle}
+              />
             </div>
           </div>
         </div>
@@ -897,16 +1050,17 @@ export default function EventsManagementPage() {
             {/* Modal Header - Fixed */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-secondary">Edit Event</h3>
-              <button
+              <ActionButton
+                label="Close edit modal"
                 onClick={() => {
                   setEditModalOpen(false)
                   setEditingItem(null)
                   setEditError('')
                 }}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="h-5 w-5 text-gray-600" />
-              </button>
+                icon={X}
+                variant="neutral"
+                iconOnly
+              />
             </div>
 
             {/* Modal Content - Scrollable */}
@@ -915,9 +1069,7 @@ export default function EventsManagementPage() {
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
                   <p className="text-red-800 text-sm flex-1">{editError}</p>
-                  <button onClick={() => setEditError('')} className="text-red-600 hover:text-red-800">
-                    <X className="h-4 w-4" />
-                  </button>
+                  <ActionButton label="Dismiss edit error" onClick={() => setEditError('')} icon={X} variant="neutral" iconOnly size="xs" />
                 </div>
               )}
               <form onSubmit={handleEditSubmit} className="space-y-4" id="edit-event-form">
@@ -939,7 +1091,7 @@ export default function EventsManagementPage() {
                       onChange={(e) => handleEditChange('category', e.target.value as EventCategory)}
                       className={inputClassName(Boolean(editFieldErrors.category))}
                     >
-                      {EVENT_CATEGORIES.map((cat) => (
+                      {editCategoryOptions.map((cat) => (
                         <option key={cat} value={cat}>
                           {cat}
                         </option>
@@ -1007,69 +1159,195 @@ export default function EventsManagementPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-6">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editForm.isHoliday}
-                      onChange={(e) => handleEditChange('isHoliday', e.target.checked)}
-                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                    />
-                    <span className="text-sm text-gray-700">Holiday</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editForm.isSpecialDay}
-                      onChange={(e) => handleEditChange('isSpecialDay', e.target.checked)}
-                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                    />
-                    <span className="text-sm text-gray-700">Special Day</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editForm.activeStatus}
-                      onChange={(e) => handleEditChange('activeStatus', e.target.checked)}
-                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                    />
-                    <span className="text-sm text-gray-700">Active</span>
-                  </label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <ToggleSwitch checked={editForm.isHoliday} onChange={(checked) => handleEditChange('isHoliday', checked)} label="Holiday" />
+                  <ToggleSwitch checked={editForm.isSpecialDay} onChange={(checked) => handleEditChange('isSpecialDay', checked)} label="Special Day" />
+                  <ToggleSwitch checked={editForm.activeStatus} onChange={(checked) => handleEditChange('activeStatus', checked)} label="Active" />
                 </div>
               </form>
             </div>
 
             {/* Modal Footer - Fixed */}
             <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
-              <button
-                type="button"
+              <ActionButton
+                label="Cancel"
                 onClick={() => {
                   setEditModalOpen(false)
                   setEditingItem(null)
                   setEditError('')
                 }}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
+                type="button"
+                variant="neutral"
+              />
+              <ActionButton
+                label={actionLoading[editingItem.id || editingItem._id || ''] ? 'Saving...' : 'Save Changes'}
                 type="submit"
                 form="edit-event-form"
                 disabled={actionLoading[editingItem.id || editingItem._id || '']}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
-              >
-                {actionLoading[editingItem.id || editingItem._id || ''] ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
+                icon={actionLoading[editingItem.id || editingItem._id || ''] ? Loader2 : Save}
+                variant="primary"
+                className={actionLoading[editingItem.id || editingItem._id || ''] ? '[&>svg]:animate-spin' : ''}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Category Modal */}
+      {categoryModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-3xl w-full shadow-xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-semibold text-secondary">Event Categories</h3>
+                <p className="text-xs text-gray-500">Add, edit, or remove categories used in event forms.</p>
+              </div>
+              <ActionButton
+                label="Close categories"
+                onClick={() => {
+                  setCategoryModalOpen(false)
+                  handleCategoryEditCancel()
+                }}
+                icon={X}
+                variant="neutral"
+                iconOnly
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <form onSubmit={handleCategoryCreate} className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category Name *</label>
+                    <input
+                      type="text"
+                      value={categoryForm.name}
+                      onChange={(e) => handleCategoryFormChange('name', e.target.value)}
+                      className={inputClassName(Boolean(categoryFieldErrors.name))}
+                      placeholder="e.g., Training"
+                    />
+                    {categoryFieldErrors.name ? (
+                      <p className="mt-1 text-xs text-red-600">{categoryFieldErrors.name}</p>
+                    ) : null}
+                  </div>
+                  <div className="flex items-end">
+                    <ToggleSwitch
+                      checked={categoryForm.activeStatus ?? true}
+                      onChange={(checked) => handleCategoryFormChange('activeStatus', checked)}
+                      label="Active"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <ActionButton
+                    label="Reset"
+                    onClick={resetCategoryForm}
+                    variant="neutral"
+                    type="button"
+                  />
+                  <ActionButton
+                    label={categorySubmitting ? 'Adding...' : 'Add Category'}
+                    type="submit"
+                    disabled={categorySubmitting}
+                    icon={categorySubmitting ? Loader2 : Plus}
+                    variant="primary"
+                    className={categorySubmitting ? '[&>svg]:animate-spin' : ''}
+                  />
+                </div>
+              </form>
+
+              <div className="border-t border-gray-200 pt-4 space-y-3">
+                {orderedCategories.length === 0 ? (
+                  <p className="text-sm text-gray-500">No categories yet.</p>
                 ) : (
-                  <>
-                    <Save className="h-4 w-4" />
-                    Save Changes
-                  </>
+                  orderedCategories.map((category) => {
+                    const categoryId = getCategoryId(category)
+                    const isEditing = categoryEditingId === categoryId
+                    const isLoading = categoryActionLoading[categoryId]
+
+                    return (
+                      <div
+                        key={categoryId || category.name}
+                        className="border border-gray-200 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                      >
+                        {isEditing ? (
+                          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500 mb-1">Name</label>
+                              <input
+                                type="text"
+                                value={categoryEditForm.name}
+                                onChange={(e) => handleCategoryEditChange('name', e.target.value)}
+                                className={inputClassName(false)}
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              <ToggleSwitch
+                                checked={categoryEditForm.activeStatus ?? true}
+                                onChange={(checked) => handleCategoryEditChange('activeStatus', checked)}
+                                label="Active"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-semibold text-secondary">{category.name}</p>
+                              <span
+                                className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                                  category.activeStatus !== false
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-gray-100 text-gray-600'
+                                }`}
+                              >
+                                {category.activeStatus !== false ? 'Active' : 'Inactive'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2">
+                          {isEditing ? (
+                            <>
+                              <ActionButton
+                                label={isLoading ? 'Saving...' : 'Save'}
+                                onClick={handleCategoryUpdate}
+                                disabled={isLoading}
+                                icon={isLoading ? Loader2 : Save}
+                                variant="primary"
+                                className={isLoading ? '[&>svg]:animate-spin' : ''}
+                              />
+                              <ActionButton
+                                label="Cancel"
+                                onClick={handleCategoryEditCancel}
+                                variant="neutral"
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <ActionButton
+                                label="Edit"
+                                onClick={() => handleCategoryEditStart(category)}
+                                disabled={isLoading || !canEdit}
+                                icon={Pencil}
+                                variant="edit"
+                                iconOnly
+                              />
+                              <ActionButton
+                                label="Delete"
+                                onClick={() => handleCategoryDelete(categoryId, category.name)}
+                                disabled={isLoading || !canDelete}
+                                icon={Trash2}
+                                variant="delete"
+                                iconOnly
+                              />
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })
                 )}
-              </button>
+              </div>
             </div>
           </div>
         </div>

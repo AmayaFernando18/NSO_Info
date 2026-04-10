@@ -16,7 +16,6 @@ const eventSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      enum: ['Meeting', 'Training', 'Workshop', 'Conference', 'Holiday', 'Special Day', 'Coordination', 'Drill', 'Other'],
       default: 'Other',
     },
     eventDate: {

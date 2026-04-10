@@ -67,6 +67,7 @@ export const validateNewsForm = (form: NewsValidationInput): FieldErrors<keyof N
 export type EventValidationInput = {
   title: string
   description: string
+  category: string
   eventDate: string
   endDate?: string
   linkUrl?: string
@@ -77,6 +78,7 @@ export const validateEventForm = (form: EventValidationInput): FieldErrors<keyof
 
   if (!form.title.trim()) errors.title = 'Title is required.'
   if (!form.description.trim()) errors.description = 'Description is required.'
+  if (!form.category.trim()) errors.category = 'Category is required.'
   if (!form.eventDate) errors.eventDate = 'Event date is required.'
 
   if (form.eventDate && form.endDate && form.endDate < form.eventDate) {
