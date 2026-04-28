@@ -68,9 +68,6 @@ export default function Footer() {
               <li>
                 <Link to="/corporate-profile" className="hover:text-yellow-300 transition-colors hover:translate-x-1 inline-block">→ Corporate Profile</Link>
               </li>
-              <li>
-                <Link to="/tenders" className="hover:text-yellow-300 transition-colors hover:translate-x-1 inline-block">→ Tender Notices</Link>
-              </li>
             </ul>
           </div>
 

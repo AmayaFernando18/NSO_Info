@@ -7,7 +7,6 @@ import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
 import NewsPage from "./pages/NewsPage";
 import CareersPage from "./pages/CareersPage";
-import TenderNoticesPage from "./pages/TenderNoticesPage";
 import DownloadSpecificationsPage from "./pages/DownloadSpecificationsPage";
 import CorporateProfilePage from "./pages/CorporateProfilePage";
 import AdminOverviewPage from "./pages/admin/AdminOverviewPage";
@@ -107,7 +106,6 @@ function AppRoutes() {
         <Route path="/careers" element={<CareersPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
         <Route path="/gallery/:id" element={<AlbumDetailPage />} />
-        <Route path="/tenders" element={<TenderNoticesPage />} />
         <Route path="/specifications" element={<DownloadSpecificationsPage />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/calendar" element={<EventsPage />} />
@@ -129,7 +127,12 @@ function AppRoutes() {
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <UserProvider>
         <AppRoutes />
       </UserProvider>

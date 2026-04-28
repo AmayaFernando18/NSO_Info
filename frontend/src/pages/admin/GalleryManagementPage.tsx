@@ -8,6 +8,7 @@ import {
   Loader2,
   Pencil,
   Plus,
+  RotateCcw,
   Save,
   Trash2,
   Upload,
@@ -18,12 +19,20 @@ import { useUser } from '../../context/UserContext'
 import { RBAC_FUNCTION } from '../../constants/rbac'
 import { canPerformAction } from '../../utils/rbac'
 import {
+  approveGalleryAlbum,
+  approveGalleryImage,
   createGalleryAlbum,
   createGalleryImage,
   deleteGalleryAlbum,
   deleteGalleryImage,
-  fetchAdminGalleryAlbums,
-  fetchAdminGalleryImages,
+  fetchAdminGalleryAlbumsWithOptions,
+  fetchAdminGalleryImagesWithOptions,
+  permanentlyDeleteGalleryAlbum,
+  permanentlyDeleteGalleryImage,
+  rejectGalleryAlbum,
+  rejectGalleryImage,
+  restoreGalleryAlbum,
+  restoreGalleryImage,
   updateGalleryAlbum,
   updateGalleryImage,
   uploadGalleryImage,
@@ -32,6 +41,7 @@ import type { GalleryAlbumDto, GalleryImageDto } from '../../types'
 import { resolveMediaUrl } from '../../utils/media'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import ActionButton from '../../components/ui/ActionButton'
+import RecordStatusBadges from '../../components/ui/RecordStatusBadges'
 import ToggleSwitch from '../../components/ui/ToggleSwitch'
 
 type AlbumFormState = {
@@ -70,6 +80,7 @@ export default function GalleryManagementPage() {
   const canCreate = canPerformAction(user, RBAC_FUNCTION.GALLERY, 'create')
   const canEdit = canPerformAction(user, RBAC_FUNCTION.GALLERY, 'edit')
   const canDelete = canPerformAction(user, RBAC_FUNCTION.GALLERY, 'delete')
+  const canApprove = canPerformAction(user, RBAC_FUNCTION.GALLERY, 'approve')
 
   const [albums, setAlbums] = useState<GalleryAlbumDto[]>([])
   const [selectedAlbumId, setSelectedAlbumId] = useState('')
@@ -90,6 +101,12 @@ export default function GalleryManagementPage() {
   const [uploading, setUploading] = useState<'album' | 'image' | null>(null)
   const [movingAlbumId, setMovingAlbumId] = useState<string | null>(null)
   const [movingImageId, setMovingImageId] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({})
+
+  const [showDeletedAlbumsOnly, setShowDeletedAlbumsOnly] = useState(false)
+  const [includeDeletedAlbums, setIncludeDeletedAlbums] = useState(false)
+  const [showDeletedImagesOnly, setShowDeletedImagesOnly] = useState(false)
+  const [includeDeletedImages, setIncludeDeletedImages] = useState(false)
 
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -124,7 +141,7 @@ export default function GalleryManagementPage() {
 
   useEffect(() => {
     void loadAlbums()
-  }, [])
+  }, [showDeletedAlbumsOnly, includeDeletedAlbums])
 
   useEffect(() => {
     if (!success) return
@@ -138,12 +155,15 @@ export default function GalleryManagementPage() {
       return
     }
     void loadImages(selectedAlbumId)
-  }, [selectedAlbumId])
+  }, [selectedAlbumId, showDeletedImagesOnly, includeDeletedImages])
 
   const loadAlbums = async () => {
     try {
       setLoadingAlbums(true)
-      const data = await fetchAdminGalleryAlbums()
+      const data = await fetchAdminGalleryAlbumsWithOptions({
+        deletedOnly: showDeletedAlbumsOnly,
+        includeDeleted: includeDeletedAlbums,
+      })
       const list = [...(data || [])].sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0))
       setAlbums(list)
 
@@ -165,7 +185,10 @@ export default function GalleryManagementPage() {
   const loadImages = async (albumId: string) => {
     try {
       setLoadingImages(true)
-      const data = await fetchAdminGalleryImages(albumId)
+      const data = await fetchAdminGalleryImagesWithOptions(albumId, {
+        deletedOnly: showDeletedImagesOnly,
+        includeDeleted: includeDeletedImages,
+      })
       setImages([...(data || [])].sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0)))
       setError('')
     } catch {
@@ -371,15 +394,15 @@ export default function GalleryManagementPage() {
 
     setConfirmState({
       title: 'Delete Album',
-      description: 'Delete this album and all of its images? This action cannot be undone.',
-      confirmLabel: 'Delete Album',
+      description: 'Move this album and its images to deleted items? You can restore it later.',
+      confirmLabel: 'Move to Deleted',
       intent: 'danger',
       onConfirm: async () => {
         try {
           setSaving(true)
           setError('')
           await deleteGalleryAlbum(albumId)
-          setSuccess('Album deleted successfully.')
+          setSuccess('Album moved to deleted items.')
           await loadAlbums()
         } catch (err: any) {
           setError(err?.response?.data?.error || 'Failed to delete album.')
@@ -398,21 +421,201 @@ export default function GalleryManagementPage() {
 
     setConfirmState({
       title: 'Delete Image',
-      description: 'Delete this image from the selected album? This action cannot be undone.',
-      confirmLabel: 'Delete Image',
+      description: 'Move this image to deleted items? You can restore it later.',
+      confirmLabel: 'Move to Deleted',
       intent: 'danger',
       onConfirm: async () => {
         try {
           setSaving(true)
           setError('')
           await deleteGalleryImage(imageId)
-          setSuccess('Image deleted successfully.')
+          setSuccess('Image moved to deleted items.')
           if (selectedAlbumId) {
             await loadImages(selectedAlbumId)
             await loadAlbums()
           }
         } catch (err: any) {
           setError(err?.response?.data?.error || 'Failed to delete image.')
+        } finally {
+          setSaving(false)
+        }
+      },
+    })
+  }
+
+  const handleApproveAlbum = async (albumId: string) => {
+    if (!canApprove) {
+      setError('You do not have permission to approve albums.')
+      return
+    }
+
+    try {
+      setActionLoading((prev) => ({ ...prev, [albumId]: true }))
+      setError('')
+      await approveGalleryAlbum(albumId)
+      setSuccess('Album approved successfully.')
+      await loadAlbums()
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'Failed to approve album.')
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [albumId]: false }))
+    }
+  }
+
+  const handleRejectAlbum = async (albumId: string) => {
+    if (!canApprove) {
+      setError('You do not have permission to reject albums.')
+      return
+    }
+
+    const rejectionReason = window.prompt('Enter rejection reason (optional):', '') || ''
+
+    try {
+      setActionLoading((prev) => ({ ...prev, [albumId]: true }))
+      setError('')
+      await rejectGalleryAlbum(albumId, rejectionReason.trim())
+      setSuccess('Album rejected successfully.')
+      await loadAlbums()
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'Failed to reject album.')
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [albumId]: false }))
+    }
+  }
+
+  const handleRestoreAlbum = async (albumId: string) => {
+    if (!canDelete) {
+      setError('You do not have permission to restore albums.')
+      return
+    }
+
+    try {
+      setActionLoading((prev) => ({ ...prev, [albumId]: true }))
+      setError('')
+      await restoreGalleryAlbum(albumId)
+      setSuccess('Album restored successfully.')
+      await loadAlbums()
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'Failed to restore album.')
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [albumId]: false }))
+    }
+  }
+
+  const handlePermanentDeleteAlbum = async (albumId: string) => {
+    if (!canDelete) {
+      setError('You do not have permission to permanently delete albums.')
+      return
+    }
+
+    setConfirmState({
+      title: 'Permanently Delete Album',
+      description: 'This will permanently delete the album and all images. This action cannot be undone.',
+      confirmLabel: 'Delete Permanently',
+      intent: 'danger',
+      onConfirm: async () => {
+        try {
+          setSaving(true)
+          setError('')
+          await permanentlyDeleteGalleryAlbum(albumId)
+          setSuccess('Album permanently deleted.')
+          await loadAlbums()
+        } catch (err: any) {
+          setError(err?.response?.data?.error || 'Failed to permanently delete album.')
+        } finally {
+          setSaving(false)
+        }
+      },
+    })
+  }
+
+  const handleApproveImage = async (imageId: string) => {
+    if (!canApprove) {
+      setError('You do not have permission to approve images.')
+      return
+    }
+
+    try {
+      setActionLoading((prev) => ({ ...prev, [imageId]: true }))
+      setError('')
+      await approveGalleryImage(imageId)
+      setSuccess('Image approved successfully.')
+      if (selectedAlbumId) {
+        await loadImages(selectedAlbumId)
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'Failed to approve image.')
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [imageId]: false }))
+    }
+  }
+
+  const handleRejectImage = async (imageId: string) => {
+    if (!canApprove) {
+      setError('You do not have permission to reject images.')
+      return
+    }
+
+    const rejectionReason = window.prompt('Enter rejection reason (optional):', '') || ''
+
+    try {
+      setActionLoading((prev) => ({ ...prev, [imageId]: true }))
+      setError('')
+      await rejectGalleryImage(imageId, rejectionReason.trim())
+      setSuccess('Image rejected successfully.')
+      if (selectedAlbumId) {
+        await loadImages(selectedAlbumId)
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'Failed to reject image.')
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [imageId]: false }))
+    }
+  }
+
+  const handleRestoreImage = async (imageId: string) => {
+    if (!canDelete) {
+      setError('You do not have permission to restore images.')
+      return
+    }
+
+    try {
+      setActionLoading((prev) => ({ ...prev, [imageId]: true }))
+      setError('')
+      await restoreGalleryImage(imageId)
+      setSuccess('Image restored successfully.')
+      if (selectedAlbumId) {
+        await loadImages(selectedAlbumId)
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'Failed to restore image.')
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [imageId]: false }))
+    }
+  }
+
+  const handlePermanentDeleteImage = async (imageId: string) => {
+    if (!canDelete) {
+      setError('You do not have permission to permanently delete images.')
+      return
+    }
+
+    setConfirmState({
+      title: 'Permanently Delete Image',
+      description: 'This will permanently remove the image. This action cannot be undone.',
+      confirmLabel: 'Delete Permanently',
+      intent: 'danger',
+      onConfirm: async () => {
+        try {
+          setSaving(true)
+          setError('')
+          await permanentlyDeleteGalleryImage(imageId)
+          setSuccess('Image permanently deleted.')
+          if (selectedAlbumId) {
+            await loadImages(selectedAlbumId)
+          }
+        } catch (err: any) {
+          setError(err?.response?.data?.error || 'Failed to permanently delete image.')
         } finally {
           setSaving(false)
         }
@@ -547,6 +750,22 @@ export default function GalleryManagementPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <ActionButton
+              label={showDeletedAlbumsOnly ? 'Viewing deleted only' : 'Show deleted only'}
+              onClick={() => {
+                setShowDeletedAlbumsOnly((prev) => !prev)
+                setIncludeDeletedAlbums(false)
+              }}
+              variant={showDeletedAlbumsOnly ? 'restore' : 'view'}
+            />
+            <ActionButton
+              label={includeDeletedAlbums ? 'Including deleted' : 'Include deleted'}
+              onClick={() => {
+                setIncludeDeletedAlbums((prev) => !prev)
+                setShowDeletedAlbumsOnly(false)
+              }}
+              variant={includeDeletedAlbums ? 'restore' : 'view'}
+            />
             {selectedAlbumId && (
               <ActionButton
                 label="Show all albums"
@@ -607,11 +826,16 @@ export default function GalleryManagementPage() {
                     <div className="p-3">
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-semibold text-secondary leading-tight line-clamp-1">{album.name}</h3>
-                        <span className={`text-[11px] px-2 py-0.5 rounded-full ${album.activeStatus === false ? 'bg-gray-100 text-gray-500' : 'bg-primary/10 text-primary'}`}>
-                          {album.activeStatus === false ? 'Inactive' : 'Active'}
-                        </span>
+                        {album.isDeleted ? (
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-100 text-red-700">Deleted</span>
+                        ) : null}
                       </div>
                       <p className="mt-1 text-xs text-gray-500 line-clamp-2">{album.description || 'No description provided.'}</p>
+                      <RecordStatusBadges
+                        activeStatus={album.activeStatus}
+                        approved={album.approved}
+                        rejected={album.rejected}
+                      />
                       <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
                         <span>{album.imageCount || 0} images</span>
                       </div>
@@ -623,7 +847,7 @@ export default function GalleryManagementPage() {
                       <ActionButton
                         label="Move up"
                         onClick={() => void moveAlbum(albumId, 'up')}
-                        disabled={!canEdit || albumIndex <= 0 || movingAlbumId === albumId}
+                        disabled={!canEdit || album.isDeleted || albumIndex <= 0 || movingAlbumId === albumId}
                         icon={ArrowUp}
                         variant="view"
                         iconOnly
@@ -632,7 +856,7 @@ export default function GalleryManagementPage() {
                       <ActionButton
                         label="Move down"
                         onClick={() => void moveAlbum(albumId, 'down')}
-                        disabled={!canEdit || albumIndex === orderedAlbums.length - 1 || movingAlbumId === albumId}
+                        disabled={!canEdit || album.isDeleted || albumIndex === orderedAlbums.length - 1 || movingAlbumId === albumId}
                         icon={ArrowDown}
                         variant="view"
                         iconOnly
@@ -641,24 +865,69 @@ export default function GalleryManagementPage() {
                     </div>
 
                     <div className="flex items-center gap-1">
+                      {!album.isDeleted && canApprove && album.approved !== true && (
+                        <ActionButton
+                          label="Approve album"
+                          onClick={() => void handleApproveAlbum(albumId)}
+                          disabled={Boolean(actionLoading[albumId])}
+                          icon={CheckCircle2}
+                          variant="approve"
+                          iconOnly
+                          size="xs"
+                        />
+                      )}
+                      {!album.isDeleted && canApprove && (
+                        <ActionButton
+                          label="Reject album"
+                          onClick={() => void handleRejectAlbum(albumId)}
+                          disabled={Boolean(actionLoading[albumId])}
+                          icon={X}
+                          variant="reject"
+                          iconOnly
+                          size="xs"
+                        />
+                      )}
                       <ActionButton
                         label="Edit album"
                         onClick={() => openEditAlbumModal(album)}
-                        disabled={!canEdit}
+                        disabled={!canEdit || album.isDeleted}
                         icon={Pencil}
                         variant="edit"
                         iconOnly
                         size="xs"
                       />
-                      <ActionButton
-                        label="Delete album"
-                        onClick={() => void handleDeleteAlbum(albumId)}
-                        disabled={!canDelete}
-                        icon={Trash2}
-                        variant="delete"
-                        iconOnly
-                        size="xs"
-                      />
+                      {album.isDeleted ? (
+                        <>
+                          <ActionButton
+                            label="Restore album"
+                            onClick={() => void handleRestoreAlbum(albumId)}
+                            disabled={!canDelete || Boolean(actionLoading[albumId])}
+                            icon={RotateCcw}
+                            variant="restore"
+                            iconOnly
+                            size="xs"
+                          />
+                          <ActionButton
+                            label="Permanently delete album"
+                            onClick={() => void handlePermanentDeleteAlbum(albumId)}
+                            disabled={!canDelete}
+                            icon={Trash2}
+                            variant="permanentDelete"
+                            iconOnly
+                            size="xs"
+                          />
+                        </>
+                      ) : (
+                        <ActionButton
+                          label="Delete album"
+                          onClick={() => void handleDeleteAlbum(albumId)}
+                          disabled={!canDelete}
+                          icon={Trash2}
+                          variant="delete"
+                          iconOnly
+                          size="xs"
+                        />
+                      )}
                     </div>
                   </div>
                 </article>
@@ -676,13 +945,33 @@ export default function GalleryManagementPage() {
               {selectedAlbum ? `Selected album: ${selectedAlbum.name}` : 'Select an album to manage images.'}
             </p>
           </div>
-          <ActionButton
-            label="Add Image"
-            onClick={openCreateImageModal}
-            disabled={!selectedAlbumId || !canCreate}
-            icon={Plus}
-            variant="primary"
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <ActionButton
+              label={showDeletedImagesOnly ? 'Viewing deleted only' : 'Show deleted only'}
+              onClick={() => {
+                setShowDeletedImagesOnly((prev) => !prev)
+                setIncludeDeletedImages(false)
+              }}
+              disabled={!selectedAlbumId}
+              variant={showDeletedImagesOnly ? 'restore' : 'view'}
+            />
+            <ActionButton
+              label={includeDeletedImages ? 'Including deleted' : 'Include deleted'}
+              onClick={() => {
+                setIncludeDeletedImages((prev) => !prev)
+                setShowDeletedImagesOnly(false)
+              }}
+              disabled={!selectedAlbumId}
+              variant={includeDeletedImages ? 'restore' : 'view'}
+            />
+            <ActionButton
+              label="Add Image"
+              onClick={openCreateImageModal}
+              disabled={!selectedAlbumId || !canCreate}
+              icon={Plus}
+              variant="primary"
+            />
+          </div>
         </div>
 
         {!selectedAlbumId ? (
@@ -713,18 +1002,19 @@ export default function GalleryManagementPage() {
 
                   <div className="p-3">
                     <h3 className="font-semibold text-secondary line-clamp-1">{image.title || 'Untitled image'}</h3>
-                    <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                      <span className={image.activeStatus === false ? 'text-gray-500' : 'text-primary'}>
-                        {image.activeStatus === false ? 'Inactive' : 'Active'}
-                      </span>
-                    </div>
+                    <RecordStatusBadges
+                      activeStatus={image.activeStatus}
+                      approved={image.approved}
+                      rejected={image.rejected}
+                    />
+                    {image.isDeleted ? <p className="mt-2 text-xs text-red-600">Deleted</p> : null}
 
                     <div className="mt-3 flex items-center justify-between">
                       <div className="flex items-center gap-1">
                         <ActionButton
                           label="Move up"
                           onClick={() => void moveImage(imageId, 'up')}
-                          disabled={!canEdit || index === 0 || movingImageId === imageId}
+                          disabled={!canEdit || image.isDeleted || index === 0 || movingImageId === imageId}
                           icon={ArrowUp}
                           variant="view"
                           iconOnly
@@ -733,7 +1023,7 @@ export default function GalleryManagementPage() {
                         <ActionButton
                           label="Move down"
                           onClick={() => void moveImage(imageId, 'down')}
-                          disabled={!canEdit || index === orderedImages.length - 1 || movingImageId === imageId}
+                          disabled={!canEdit || image.isDeleted || index === orderedImages.length - 1 || movingImageId === imageId}
                           icon={ArrowDown}
                           variant="view"
                           iconOnly
@@ -742,24 +1032,69 @@ export default function GalleryManagementPage() {
                       </div>
 
                       <div className="flex items-center gap-1">
+                        {!image.isDeleted && canApprove && image.approved !== true && (
+                          <ActionButton
+                            label="Approve image"
+                            onClick={() => void handleApproveImage(imageId)}
+                            disabled={Boolean(actionLoading[imageId])}
+                            icon={CheckCircle2}
+                            variant="approve"
+                            iconOnly
+                            size="xs"
+                          />
+                        )}
+                        {!image.isDeleted && canApprove && (
+                          <ActionButton
+                            label="Reject image"
+                            onClick={() => void handleRejectImage(imageId)}
+                            disabled={Boolean(actionLoading[imageId])}
+                            icon={X}
+                            variant="reject"
+                            iconOnly
+                            size="xs"
+                          />
+                        )}
                         <ActionButton
                           label="Edit image"
                           onClick={() => openEditImageModal(image)}
-                          disabled={!canEdit}
+                          disabled={!canEdit || image.isDeleted}
                           icon={Pencil}
                           variant="edit"
                           iconOnly
                           size="xs"
                         />
-                        <ActionButton
-                          label="Delete image"
-                          onClick={() => void handleDeleteImage(imageId)}
-                          disabled={!canDelete}
-                          icon={Trash2}
-                          variant="delete"
-                          iconOnly
-                          size="xs"
-                        />
+                        {image.isDeleted ? (
+                          <>
+                            <ActionButton
+                              label="Restore image"
+                              onClick={() => void handleRestoreImage(imageId)}
+                              disabled={!canDelete || Boolean(actionLoading[imageId])}
+                              icon={RotateCcw}
+                              variant="restore"
+                              iconOnly
+                              size="xs"
+                            />
+                            <ActionButton
+                              label="Permanently delete image"
+                              onClick={() => void handlePermanentDeleteImage(imageId)}
+                              disabled={!canDelete}
+                              icon={Trash2}
+                              variant="permanentDelete"
+                              iconOnly
+                              size="xs"
+                            />
+                          </>
+                        ) : (
+                          <ActionButton
+                            label="Delete image"
+                            onClick={() => void handleDeleteImage(imageId)}
+                            disabled={!canDelete}
+                            icon={Trash2}
+                            variant="delete"
+                            iconOnly
+                            size="xs"
+                          />
+                        )}
                       </div>
                     </div>
                   </div>

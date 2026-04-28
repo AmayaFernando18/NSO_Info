@@ -5,6 +5,8 @@ import validateRequest from '../middleware/validateRequest.js';
 import { authenticate, requireAction } from '../middleware/rbacMiddleware.js';
 import { RBAC_FUNCTION } from '../config/rbacFunctions.js';
 import {
+  approveGalleryAlbum,
+  approveGalleryImage,
   createGalleryAlbum,
   createGalleryImage,
   deleteGalleryAlbum,
@@ -13,6 +15,12 @@ import {
   getAdminGalleryImages,
   getPublicGalleryAlbumDetail,
   getPublicGalleryAlbums,
+  permanentlyDeleteGalleryAlbum,
+  permanentlyDeleteGalleryImage,
+  rejectGalleryAlbum,
+  rejectGalleryImage,
+  restoreGalleryAlbum,
+  restoreGalleryImage,
   updateGalleryAlbum,
   updateGalleryImage,
 } from '../controllers/gallery.controller.js';
@@ -75,6 +83,12 @@ const updateImageSchema = z.object({
   query: z.object({}),
 });
 
+const rejectSchema = z.object({
+  body: z.object({ rejectionReason: z.string().optional() }),
+  params: z.object({ id: z.string().min(1) }),
+  query: z.object({}),
+});
+
 router.get('/public/albums', getPublicGalleryAlbums);
 router.get('/public/albums/:id', getPublicGalleryAlbumDetail);
 
@@ -111,5 +125,39 @@ router.put(
   updateGalleryImage
 );
 router.delete('/admin/images/:id', authenticate, requireAction('delete', FUNCTION_NAME), deleteGalleryImage);
+
+// Album approval and workflow routes
+router.post('/admin/albums/:id/approve', authenticate, requireAction('approve', FUNCTION_NAME), approveGalleryAlbum);
+router.post(
+  '/admin/albums/:id/reject',
+  authenticate,
+  requireAction('approve', FUNCTION_NAME),
+  validateRequest(rejectSchema),
+  rejectGalleryAlbum
+);
+router.post('/admin/albums/:id/restore', authenticate, requireAction('delete', FUNCTION_NAME), restoreGalleryAlbum);
+router.delete(
+  '/admin/albums/:id/permanent',
+  authenticate,
+  requireAction('delete', FUNCTION_NAME),
+  permanentlyDeleteGalleryAlbum
+);
+
+// Image approval and workflow routes
+router.post('/admin/images/:id/approve', authenticate, requireAction('approve', FUNCTION_NAME), approveGalleryImage);
+router.post(
+  '/admin/images/:id/reject',
+  authenticate,
+  requireAction('approve', FUNCTION_NAME),
+  validateRequest(rejectSchema),
+  rejectGalleryImage
+);
+router.post('/admin/images/:id/restore', authenticate, requireAction('delete', FUNCTION_NAME), restoreGalleryImage);
+router.delete(
+  '/admin/images/:id/permanent',
+  authenticate,
+  requireAction('delete', FUNCTION_NAME),
+  permanentlyDeleteGalleryImage
+);
 
 export default router;

@@ -33,6 +33,53 @@ const galleryImageSchema = new mongoose.Schema(
       default: true,
       index: true,
     },
+    approved: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    approvedBy: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    approvedAt: {
+      type: Date,
+      default: null,
+    },
+    rejected: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    rejectedBy: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    rejectionReason: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    rejectedAt: {
+      type: Date,
+      default: null,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+    deletedBy: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     createdBy: {
       type: String,
       trim: true,

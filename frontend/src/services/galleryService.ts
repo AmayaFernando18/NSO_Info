@@ -28,6 +28,11 @@ type GalleryAlbumDetailResponse = {
   data: GalleryAlbumDetailDto
 }
 
+type AdminListOptions = {
+  deletedOnly?: boolean
+  includeDeleted?: boolean
+}
+
 export type GalleryAlbumInput = {
   name: string
   description?: string
@@ -59,6 +64,13 @@ export const fetchAdminGalleryAlbums = async (): Promise<GalleryAlbumDto[]> => {
   return data.data || []
 }
 
+export const fetchAdminGalleryAlbumsWithOptions = async (
+  options: AdminListOptions = {}
+): Promise<GalleryAlbumDto[]> => {
+  const { data } = await api.get<ListGalleryAlbumsResponse>('/gallery/admin/albums', { params: options })
+  return data.data || []
+}
+
 export const createGalleryAlbum = async (payload: GalleryAlbumInput): Promise<GalleryAlbumDto> => {
   const { data } = await api.post<ItemGalleryAlbumResponse>('/gallery/admin/albums', payload)
   return data.data
@@ -73,8 +85,39 @@ export const deleteGalleryAlbum = async (id: string): Promise<void> => {
   await api.delete(`/gallery/admin/albums/${id}`)
 }
 
+export const approveGalleryAlbum = async (id: string): Promise<GalleryAlbumDto> => {
+  const { data } = await api.post<ItemGalleryAlbumResponse>(`/gallery/admin/albums/${id}/approve`)
+  return data.data
+}
+
+export const rejectGalleryAlbum = async (id: string, rejectionReason?: string): Promise<GalleryAlbumDto> => {
+  const { data } = await api.post<ItemGalleryAlbumResponse>(`/gallery/admin/albums/${id}/reject`, {
+    rejectionReason,
+  })
+  return data.data
+}
+
+export const restoreGalleryAlbum = async (id: string): Promise<GalleryAlbumDto> => {
+  const { data } = await api.post<ItemGalleryAlbumResponse>(`/gallery/admin/albums/${id}/restore`)
+  return data.data
+}
+
+export const permanentlyDeleteGalleryAlbum = async (id: string): Promise<void> => {
+  await api.delete(`/gallery/admin/albums/${id}/permanent`)
+}
+
 export const fetchAdminGalleryImages = async (albumId: string): Promise<GalleryImageDto[]> => {
   const { data } = await api.get<ListGalleryImagesResponse>(`/gallery/admin/albums/${albumId}/images`)
+  return data.data || []
+}
+
+export const fetchAdminGalleryImagesWithOptions = async (
+  albumId: string,
+  options: AdminListOptions = {}
+): Promise<GalleryImageDto[]> => {
+  const { data } = await api.get<ListGalleryImagesResponse>(`/gallery/admin/albums/${albumId}/images`, {
+    params: options,
+  })
   return data.data || []
 }
 
@@ -90,6 +133,27 @@ export const updateGalleryImage = async (id: string, payload: Partial<GalleryIma
 
 export const deleteGalleryImage = async (id: string): Promise<void> => {
   await api.delete(`/gallery/admin/images/${id}`)
+}
+
+export const approveGalleryImage = async (id: string): Promise<GalleryImageDto> => {
+  const { data } = await api.post<ItemGalleryImageResponse>(`/gallery/admin/images/${id}/approve`)
+  return data.data
+}
+
+export const rejectGalleryImage = async (id: string, rejectionReason?: string): Promise<GalleryImageDto> => {
+  const { data } = await api.post<ItemGalleryImageResponse>(`/gallery/admin/images/${id}/reject`, {
+    rejectionReason,
+  })
+  return data.data
+}
+
+export const restoreGalleryImage = async (id: string): Promise<GalleryImageDto> => {
+  const { data } = await api.post<ItemGalleryImageResponse>(`/gallery/admin/images/${id}/restore`)
+  return data.data
+}
+
+export const permanentlyDeleteGalleryImage = async (id: string): Promise<void> => {
+  await api.delete(`/gallery/admin/images/${id}/permanent`)
 }
 
 type UploadGalleryImageResponse = {

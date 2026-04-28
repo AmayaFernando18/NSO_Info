@@ -757,23 +757,25 @@ export default function AdminQuickAccessPage() {
                               </div>
                             </div>
                           ) : (
-                            <div className="flex flex-col sm:flex-row gap-4">
-                              <div className="w-full sm:w-40 h-28 rounded-lg bg-primary/10 flex items-center justify-center">
-                                <Icon className="h-8 w-8 text-primary" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-base font-semibold text-secondary mb-2">{item.title}</h4>
-                                <p className="text-sm text-gray-600 mb-3">{item.description}</p>
-                                <p className="text-xs text-gray-500 break-all">{item.url}</p>
+                            <div className="flex flex-col gap-4">
+                              <div className="flex flex-col sm:flex-row gap-4">
+                                <div className="w-full sm:w-40 h-28 rounded-lg bg-primary/10 flex items-center justify-center">
+                                  <Icon className="h-8 w-8 text-primary" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-base font-semibold text-secondary mb-2">{item.title}</h4>
+                                  <p className="text-sm text-gray-600 mb-3">{item.description}</p>
+                                  <p className="text-xs text-gray-500 break-all">{item.url}</p>
 
-                                {item.rejected && item.rejectionReason && (
-                                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
-                                    <strong>Rejection reason:</strong> {item.rejectionReason}
-                                  </div>
-                                )}
+                                  {item.rejected && item.rejectionReason && (
+                                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
+                                      <strong>Rejection reason:</strong> {item.rejectionReason}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
 
-                              <div className="flex flex-col gap-2 sm:items-end">
+                              <div className="flex flex-wrap items-center gap-2">
                                 {canEdit && viewMode === 'active' && (
                                   <ActionButton
                                     label="Edit"
@@ -783,7 +785,7 @@ export default function AdminQuickAccessPage() {
                                   />
                                 )}
                                 {canApprove && !item.approved && !item.rejected && viewMode === 'active' && (
-                                  <div className="flex gap-2">
+                                  <>
                                     <ActionButton
                                       label="Approve"
                                       onClick={() => void handleApprove(id)}
@@ -798,7 +800,7 @@ export default function AdminQuickAccessPage() {
                                       variant="reject"
                                       size="xs"
                                     />
-                                  </div>
+                                  </>
                                 )}
                                 {canDelete && viewMode === 'active' && (
                                   <ActionButton
@@ -811,7 +813,7 @@ export default function AdminQuickAccessPage() {
                                   />
                                 )}
                                 {canDelete && viewMode === 'deleted' && (
-                                  <div className="flex gap-2">
+                                  <>
                                     <ActionButton
                                       label="Restore"
                                       onClick={() => void handleRestore(id)}
@@ -826,7 +828,7 @@ export default function AdminQuickAccessPage() {
                                       variant="permanentDelete"
                                       size="xs"
                                     />
-                                  </div>
+                                  </>
                                 )}
                               </div>
                             </div>
