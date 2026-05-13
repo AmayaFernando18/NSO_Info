@@ -1,6 +1,6 @@
 import Breadcrumb from '../components/Breadcrumb';
 import Card from '../components/Card';
-import { FileText, Download, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileText, Download, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
 const specifications = {
@@ -65,7 +65,7 @@ export default function DownloadSpecificationsPage() {
             <span className="font-semibold text-left">
               SPECIAL NOTICE REGARDING SUBMITTING TYPE TEST REPORTS FOR CEB TENDERS.
             </span>
-            <ChevronDown className={`h-5 w-5 transition-transform ${noticeExpanded ? 'rotate-180' : ''}`} />
+            <ChevronRight className={`h-5 w-5 transition-transform ${noticeExpanded ? 'rotate-90' : ''}`} />
           </button>
           
           {noticeExpanded && (

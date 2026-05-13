@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useUser } from '../../context/UserContext'
 import { canPerformAction } from '../../utils/rbac'
 import { RBAC_FUNCTION } from '../../constants/rbac'
-import { AlertCircle, ArrowDown, ArrowUp, CheckCircle2, Loader2, Upload, X, Trash2, Pencil, Save, RotateCcw, Phone, Mail, Users } from 'lucide-react'
+import { AlertCircle, ArrowDown, ArrowUp, CheckCircle2, Loader2, Upload, X, Trash2, Pencil, Save, RotateCcw, Phone, Mail, Users, XCircle } from 'lucide-react'
 import {
+  approveCorporateMember,
   createCorporateMember,
   createCorporateCategory,
   fetchAdminCorporateMembers,
@@ -17,12 +18,14 @@ import {
   fetchDeletedCorporateMembers,
   deleteCorporateCategory,
   reorderCorporateMembers,
+  rejectCorporateMember,
 } from '../../services/corporateService'
 import type { CorporateCategoryDto, CorporateMemberDto } from '../../types'
 import { resolveMediaUrl } from '../../utils/media'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import ActionButton from '../../components/ui/ActionButton'
+import RecordStatusBadges from '../../components/ui/RecordStatusBadges'
 import ToggleSwitch from '../../components/ui/ToggleSwitch'
 import { hasFieldErrors, parseApiValidationErrors, validateCorporateMemberForm } from '../../utils/adminValidation'
 
@@ -76,6 +79,7 @@ export default function CorporateManagementPage() {
   const canCreate = canPerformAction(user, RBAC_FUNCTION.CORPORATE, 'create')
   const canEdit = canPerformAction(user, RBAC_FUNCTION.CORPORATE, 'edit')
   const canDelete = canPerformAction(user, RBAC_FUNCTION.CORPORATE, 'delete')
+  const canApprove = canPerformAction(user, RBAC_FUNCTION.CORPORATE, 'approve')
 
   const [form, setForm] = useState<CorporateFormState>(createInitialFormState)
   const [members, setMembers] = useState<CorporateMemberDto[]>([])
@@ -102,6 +106,9 @@ export default function CorporateManagementPage() {
   const [editForm, setEditForm] = useState<CorporateFormState>(createInitialFormState)
   const [editUploading, setEditUploading] = useState(false)
   const [closingPanel, setClosingPanel] = useState(false)
+  const [rejectModalOpen, setRejectModalOpen] = useState(false)
+  const [rejectingItemId, setRejectingItemId] = useState<string | null>(null)
+  const [rejectionReason, setRejectionReason] = useState('')
   const [confirmingAction, setConfirmingAction] = useState(false)
   const [confirmState, setConfirmState] = useState<{
     title: string
@@ -170,6 +177,46 @@ export default function CorporateManagementPage() {
     if (typeof item.category === 'string') return item.category
     return item.category?._id || item.category?.id || ''
   }
+
+  const getMemberId = (item: CorporateMemberDto) => item.id ?? item._id ?? ''
+
+  const getCategoryLabel = (categoryId: string) => {
+    if (!categoryId || categoryId === 'uncategorized') return 'Uncategorized'
+    return orderedCategories.find((category) => (category.id || category._id) === categoryId)?.name || 'Uncategorized'
+  }
+
+  const activeMemberGroups = useMemo(() => {
+    const groupMap = new Map<string, CorporateMemberDto[]>()
+
+    orderedMembers.forEach((member) => {
+      const categoryId = getCategoryId(member)
+      const groupId = orderedCategories.some((category) => (category.id || category._id) === categoryId)
+        ? categoryId
+        : 'uncategorized'
+      const list = groupMap.get(groupId) || []
+      list.push(member)
+      groupMap.set(groupId, list)
+    })
+
+    const groups = orderedCategories.map((category) => {
+      const id = category.id || category._id || ''
+      return {
+        id,
+        label: category.name,
+        members: groupMap.get(id) || [],
+      }
+    })
+
+    if (groupMap.has('uncategorized')) {
+      groups.push({
+        id: 'uncategorized',
+        label: 'Uncategorized',
+        members: groupMap.get('uncategorized') || [],
+      })
+    }
+
+    return groups.filter((group) => group.members.length > 0)
+  }, [orderedCategories, orderedMembers])
 
   const handleChange = (field: keyof CorporateFormState, value: string | number | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -339,21 +386,94 @@ export default function CorporateManagementPage() {
     })
   }
 
-  const moveMember = async (index: number, direction: 'up' | 'down') => {
+  const handleApprove = async (itemId: string) => {
+    if (!canApprove) {
+      setError('You do not have permission to approve corporate members.')
+      return
+    }
+
+    try {
+      setActionLoading((prev) => ({ ...prev, [itemId]: true }))
+      setError('')
+      const approved = await approveCorporateMember(itemId)
+      setMembers((prev) => prev.map((item) => ((item.id || item._id) === itemId ? approved : item)))
+      setDeletedMembers((prev) => prev.map((item) => ((item.id || item._id) === itemId ? approved : item)))
+      setSuccess('Corporate member approved successfully.')
+    } catch (err: any) {
+      const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to approve member.'
+      setError(message)
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [itemId]: false }))
+    }
+  }
+
+  const handleRejectClick = (itemId: string) => {
+    setRejectingItemId(itemId)
+    setRejectionReason('')
+    setRejectModalOpen(true)
+  }
+
+  const handleRejectConfirm = async () => {
+    if (!rejectingItemId || !canApprove) return
+
+    if (!rejectionReason.trim()) {
+      setError('Rejection reason is required.')
+      return
+    }
+
+    try {
+      setActionLoading((prev) => ({ ...prev, [rejectingItemId]: true }))
+      setError('')
+      const rejected = await rejectCorporateMember(rejectingItemId, rejectionReason.trim())
+      setMembers((prev) => prev.map((item) => ((item.id || item._id) === rejectingItemId ? rejected : item)))
+      setDeletedMembers((prev) => prev.map((item) => ((item.id || item._id) === rejectingItemId ? rejected : item)))
+      setSuccess('Corporate member rejected.')
+      setRejectModalOpen(false)
+      setRejectingItemId(null)
+      setRejectionReason('')
+    } catch (err: any) {
+      const message = err?.response?.data?.error || err?.response?.data?.message || 'Failed to reject member.'
+      setError(message)
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [rejectingItemId]: false }))
+    }
+  }
+
+  const moveMember = async (itemId: string, direction: 'up' | 'down', categoryId: string) => {
     if (!canEdit) {
       setError('You do not have permission to reorder corporate members.')
       return
     }
 
-    const nextIndex = direction === 'up' ? index - 1 : index + 1
-    if (nextIndex < 0 || nextIndex >= orderedMembers.length) return
+    const targetCategoryId = categoryId || 'uncategorized'
+    const categoryMembers = orderedMembers.filter((member) => {
+      const memberCategoryId = getCategoryId(member)
+      return (memberCategoryId || 'uncategorized') === targetCategoryId
+    })
+    const currentIndex = categoryMembers.findIndex((member) => getMemberId(member) === itemId)
+    if (currentIndex < 0) return
 
-    const next = [...orderedMembers]
-    const [item] = next.splice(index, 1)
-    next.splice(nextIndex, 0, item)
+    const nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    if (nextIndex < 0 || nextIndex >= categoryMembers.length) return
+
+    const nextCategoryMembers = [...categoryMembers]
+    const [item] = nextCategoryMembers.splice(currentIndex, 1)
+    nextCategoryMembers.splice(nextIndex, 0, item)
+
+    if (nextCategoryMembers.some((member) => !getMemberId(member))) {
+      setError('Cannot reorder due to invalid member id.')
+      return
+    }
+
+    const nextGroups = activeMemberGroups.map((group) => {
+      if (group.id !== targetCategoryId) return group
+      return { ...group, members: nextCategoryMembers }
+    })
+
+    const next = nextGroups.flatMap((group) => group.members)
 
     const orderedIds = next
-      .map((member) => member.id || member._id)
+      .map((member) => getMemberId(member))
       .filter((id): id is string => Boolean(id))
 
     if (orderedIds.length !== next.length) {
@@ -601,8 +721,7 @@ export default function CorporateManagementPage() {
   }
 
   const currentList = showDeletedTab ? deletedMembers : orderedMembers
-  const memberId = (item: CorporateMemberDto) => item.id ?? item._id ?? ''
-  const editingMemberId = editingItem ? memberId(editingItem) : ''
+  const editingMemberId = editingItem ? getMemberId(editingItem) : ''
 
   return (
     <div className="min-h-screen bg-base">
@@ -631,6 +750,43 @@ export default function CorporateManagementPage() {
             <button onClick={() => setSuccess('')} className="text-emerald-400 hover:text-emerald-600 transition-colors">
               <X className="h-4 w-4" />
             </button>
+          </div>
+        )}
+
+        {rejectModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
+              <h3 className="text-lg font-bold text-secondary mb-4">Reject Corporate Member</h3>
+              <p className="text-sm text-gray-600 mb-4">Please provide a reason for rejecting this corporate member:</p>
+
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={4}
+                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Enter rejection reason..."
+              />
+
+              <div className="mt-6 flex gap-2 justify-end">
+                <ActionButton
+                  label="Cancel"
+                  onClick={() => {
+                    setRejectModalOpen(false)
+                    setRejectingItemId(null)
+                    setRejectionReason('')
+                  }}
+                  variant="neutral"
+                />
+                <ActionButton
+                  label={rejectingItemId && actionLoading[rejectingItemId] ? 'Rejecting...' : 'Reject Member'}
+                  onClick={() => void handleRejectConfirm()}
+                  disabled={!rejectionReason.trim() || (rejectingItemId ? actionLoading[rejectingItemId] : false)}
+                  icon={rejectingItemId && actionLoading[rejectingItemId] ? Loader2 : XCircle}
+                  variant="reject"
+                  className={rejectingItemId && actionLoading[rejectingItemId] ? '[&>svg]:animate-spin' : ''}
+                />
+              </div>
+            </div>
           </div>
         )}
 
@@ -928,36 +1084,27 @@ export default function CorporateManagementPage() {
                       <ArrowUp className="h-3 w-3 text-primary" />
                     </div>
                     <p className="text-sm text-gray-700">
-                      Use the arrows on the right of each card to reorder members. Higher members appear first on public profiles.
+                      Use the arrows on each card to reorder members within the same category. Higher members appear first on public profiles.
                     </p>
                   </div>
                 )}
-                
-                {currentList.length === 0 ? (
-                  <div className="py-12 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mx-auto mb-3">
-                      <Users className="h-6 w-6 text-gray-400" />
+                {showDeletedTab ? (
+                  currentList.length === 0 ? (
+                    <div className="py-12 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                      <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mx-auto mb-3">
+                        <Users className="h-6 w-6 text-gray-400" />
+                      </div>
+                      <p className="text-gray-500 font-medium">No corporate members found</p>
+                      <p className="text-xs text-gray-400 mt-1">Add a new member profile to see them listed here.</p>
                     </div>
-                    <p className="text-gray-500 font-medium">No corporate members found</p>
-                    <p className="text-xs text-gray-400 mt-1">Add a new member profile to see them listed here.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {currentList.map((item, index) => (
-                      (() => {
-                        const id = memberId(item)
+                  ) : (
+                    <div className="space-y-4">
+                      {currentList.map((item, index) => {
+                        const id = getMemberId(item)
                         const isBusy = Boolean(id && actionLoading[id])
                         const orderValue = item.displayOrder ?? index + 1
-                        const categoryLabel = (() => {
-                          if (item.category && typeof item.category === 'object' && 'name' in item.category) {
-                            return item.category.name
-                          }
-                          if (typeof item.category === 'string') {
-                            const match = categories.find((category) => (category.id || category._id) === item.category)
-                            return match?.name || 'Uncategorized'
-                          }
-                          return 'Uncategorized'
-                        })()
+                        const categoryId = getCategoryId(item)
+                        const categoryLabel = getCategoryLabel(categoryId)
 
                         return (
                           <div
@@ -966,10 +1113,9 @@ export default function CorporateManagementPage() {
                             style={{ animationDelay: `${index * 60}ms` }}
                           >
                             <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-gradient-to-b from-primary/80 to-accent/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                            
+
                             <div className="p-5">
                               <div className="flex flex-col md:flex-row gap-5 items-start">
-                                {/* Details column */}
                                 <div className="flex items-center gap-4 flex-1 min-w-0">
                                   {item.imageUrl ? (
                                     <div className="relative">
@@ -992,26 +1138,21 @@ export default function CorporateManagementPage() {
                                   <div className="min-w-0 flex-1">
                                     <h3 className="text-base font-bold text-secondary truncate">{item.name}</h3>
                                     <p className="text-sm font-medium text-primary mt-0.5 truncate">{item.position}</p>
-                                    
+
                                     <div className="flex flex-wrap items-center gap-2 mt-2">
                                       <span className="inline-flex items-center rounded-lg bg-gray-100 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-gray-700 uppercase">
                                         {categoryLabel}
                                       </span>
-                                      {showDeletedTab && (
-                                        <span className="inline-flex items-center rounded-lg bg-red-100 px-2.5 py-1 text-[11px] font-bold tracking-wide text-red-700 uppercase">
-                                          Deleted
-                                        </span>
-                                      )}
-                                      {!showDeletedTab && (
-                                        <span className="inline-flex items-center rounded-lg bg-primary/10 px-2.5 py-1 text-[11px] font-bold tracking-wide text-primary uppercase">
-                                          Order #{orderValue}
-                                        </span>
-                                      )}
+                                      <span className="inline-flex items-center rounded-lg bg-red-100 px-2.5 py-1 text-[11px] font-bold tracking-wide text-red-700 uppercase">
+                                        Deleted
+                                      </span>
+                                      <span className="inline-flex items-center rounded-lg bg-primary/10 px-2.5 py-1 text-[11px] font-bold tracking-wide text-primary uppercase">
+                                        Order #{orderValue}
+                                      </span>
                                     </div>
                                   </div>
                                 </div>
 
-                                {/* Contact info & Actions column */}
                                 <div className="flex flex-col gap-3 w-full md:w-auto md:min-w-[280px]">
                                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-2 text-[13px] text-gray-600">
                                     <div className="flex items-center gap-2.5 min-w-0">
@@ -1029,13 +1170,159 @@ export default function CorporateManagementPage() {
                                   </div>
 
                                   <div className="flex items-center justify-end gap-2 pt-2 mt-auto">
-                                    {!showDeletedTab ? (
-                                      <>
+                                    {canDelete && (
+                                      <ActionButton
+                                        label={isBusy ? 'Restoring...' : 'Restore'}
+                                        onClick={() => id && handleRestore(id)}
+                                        disabled={!id || isBusy}
+                                        icon={isBusy ? Loader2 : RotateCcw}
+                                        variant="restore"
+                                        size="xs"
+                                        className={isBusy ? '[&>svg]:animate-spin' : ''}
+                                      />
+                                    )}
+                                    {canDelete && (
+                                      <ActionButton
+                                        label={isBusy ? 'Deleting...' : 'Delete Forever'}
+                                        onClick={() => id && handlePermanentDelete(id)}
+                                        disabled={!id || isBusy}
+                                        icon={isBusy ? Loader2 : X}
+                                        variant="permanentDelete"
+                                        size="xs"
+                                        className={isBusy ? '[&>svg]:animate-spin' : ''}
+                                      />
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                ) : activeMemberGroups.length === 0 ? (
+                  <div className="py-12 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mx-auto mb-3">
+                      <Users className="h-6 w-6 text-gray-400" />
+                    </div>
+                    <p className="text-gray-500 font-medium">No corporate members found</p>
+                    <p className="text-xs text-gray-400 mt-1">Add a new member profile to see them listed here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {activeMemberGroups.map((group) => (
+                      <section key={group.id} className="space-y-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h3 className="text-base font-bold text-secondary">{group.label}</h3>
+                            <p className="text-xs text-gray-500 mt-0.5">{group.members.length} member{group.members.length === 1 ? '' : 's'}</p>
+                          </div>
+                          <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary uppercase tracking-wide">
+                            Category
+                          </span>
+                        </div>
+
+                        <div className="space-y-4">
+                          {group.members.map((item, index) => {
+                            const id = getMemberId(item)
+                            const isBusy = Boolean(id && actionLoading[id])
+                            const orderValue = item.displayOrder ?? index + 1
+                            const categoryId = group.id
+                            const categoryLabel = group.label
+
+                            return (
+                              <div
+                                key={id || `${item.email}-${index}`}
+                                className="group relative rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:border-primary/20 hover:shadow-md animate-card-in overflow-hidden"
+                                style={{ animationDelay: `${index * 60}ms` }}
+                              >
+                                <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-gradient-to-b from-primary/80 to-accent/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                                <div className="p-5">
+                                  <div className="flex flex-col md:flex-row gap-5 items-start">
+                                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                                      {item.imageUrl ? (
+                                        <div className="relative">
+                                          <img
+                                            src={resolveMediaUrl(item.imageUrl)}
+                                            alt={item.name}
+                                            className="h-[84px] w-[84px] rounded-2xl object-cover ring-1 ring-gray-100 shadow-sm flex-shrink-0"
+                                          />
+                                          <div className={`absolute -bottom-1.5 -right-1.5 h-4 w-4 rounded-full border-2 border-white ${item.activeStatus ? 'bg-emerald-500' : 'bg-gray-300'}`} title={item.activeStatus ? 'Active' : 'Inactive'} />
+                                        </div>
+                                      ) : (
+                                        <div className="relative">
+                                          <div className="h-[84px] w-[84px] rounded-2xl bg-gradient-to-br from-primary/10 to-accent/5 text-primary ring-1 ring-primary/10 flex items-center justify-center font-bold text-2xl shadow-sm flex-shrink-0">
+                                            {getInitials(item.name || '')}
+                                          </div>
+                                          <div className={`absolute -bottom-1.5 -right-1.5 h-4 w-4 rounded-full border-2 border-white ${item.activeStatus ? 'bg-emerald-500' : 'bg-gray-300'}`} title={item.activeStatus ? 'Active' : 'Inactive'} />
+                                        </div>
+                                      )}
+
+                                      <div className="min-w-0 flex-1">
+                                        <h3 className="text-base font-bold text-secondary truncate">{item.name}</h3>
+                                        <p className="text-sm font-medium text-primary mt-0.5 truncate">{item.position}</p>
+
+                                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                                          <span className="inline-flex items-center rounded-lg bg-gray-100 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-gray-700 uppercase">
+                                            {categoryLabel}
+                                          </span>
+                                          <RecordStatusBadges
+                                            activeStatus={item.activeStatus}
+                                            approved={item.approved}
+                                            rejected={item.rejected}
+                                          />
+                                          <span className="inline-flex items-center rounded-lg bg-primary/10 px-2.5 py-1 text-[11px] font-bold tracking-wide text-primary uppercase">
+                                            Order #{orderValue}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex flex-col gap-3 w-full md:w-auto md:min-w-[280px]">
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-2 text-[13px] text-gray-600">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                                            <Phone className="h-3 w-3 text-primary" />
+                                          </div>
+                                          <span className="truncate">{item.phone}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                                            <Mail className="h-3 w-3 text-primary" />
+                                          </div>
+                                          <span className="truncate">{item.email}</span>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center justify-end gap-2 pt-2 mt-auto">
+                                        {canApprove && !item.approved && !item.rejected && (
+                                          <>
+                                            <ActionButton
+                                              label={isBusy ? 'Approving...' : 'Approve'}
+                                              onClick={() => void handleApprove(id)}
+                                              disabled={!id || isBusy}
+                                              icon={isBusy ? Loader2 : CheckCircle2}
+                                              variant="approve"
+                                              size="xs"
+                                              className={isBusy ? '[&>svg]:animate-spin' : ''}
+                                            />
+                                            <ActionButton
+                                              label="Reject"
+                                              onClick={() => id && handleRejectClick(id)}
+                                              disabled={!id || isBusy}
+                                              icon={XCircle}
+                                              variant="reject"
+                                              size="xs"
+                                            />
+                                          </>
+                                        )}
                                         {canEdit && (
                                           <div className="flex items-center bg-white rounded-lg p-1 border border-primary/20 shadow-sm mr-2 opacity-100 transition-opacity">
                                             <ActionButton
                                               label="Move Up"
-                                              onClick={() => void moveMember(index, 'up')}
+                                              onClick={() => void moveMember(id, 'up', categoryId)}
                                               disabled={index === 0 || reordering}
                                               icon={ArrowUp}
                                               variant="view"
@@ -1045,8 +1332,8 @@ export default function CorporateManagementPage() {
                                             <div className="w-px h-4 bg-gray-200 mx-1" />
                                             <ActionButton
                                               label="Move Down"
-                                              onClick={() => void moveMember(index, 'down')}
-                                              disabled={index === orderedMembers.length - 1 || reordering}
+                                              onClick={() => void moveMember(id, 'down', categoryId)}
+                                              disabled={index === group.members.length - 1 || reordering}
                                               icon={ArrowDown}
                                               variant="view"
                                               iconOnly
@@ -1074,40 +1361,15 @@ export default function CorporateManagementPage() {
                                             className={isBusy ? '[&>svg]:animate-spin' : ''}
                                           />
                                         )}
-                                      </>
-                                    ) : (
-                                      <>
-                                        {canDelete && (
-                                          <ActionButton
-                                            label={isBusy ? 'Restoring...' : 'Restore'}
-                                            onClick={() => id && handleRestore(id)}
-                                            disabled={!id || isBusy}
-                                            icon={isBusy ? Loader2 : RotateCcw}
-                                            variant="restore"
-                                            size="xs"
-                                            className={isBusy ? '[&>svg]:animate-spin' : ''}
-                                          />
-                                        )}
-                                        {canDelete && (
-                                          <ActionButton
-                                            label={isBusy ? 'Deleting...' : 'Delete Forever'}
-                                            onClick={() => id && handlePermanentDelete(id)}
-                                            disabled={!id || isBusy}
-                                            icon={isBusy ? Loader2 : X}
-                                            variant="permanentDelete"
-                                            size="xs"
-                                            className={isBusy ? '[&>svg]:animate-spin' : ''}
-                                          />
-                                        )}
-                                      </>
-                                    )}
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          </div>
-                        )
-                      })()
+                            )
+                          })}
+                        </div>
+                      </section>
                     ))}
                   </div>
                 )}

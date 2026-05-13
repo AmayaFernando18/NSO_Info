@@ -1,37 +1,38 @@
 import mongoose from 'mongoose';
 
-const corporateMemberSchema = new mongoose.Schema(
+const downloadSchema = new mongoose.Schema(
   {
-    name: {
+    category: {
+      type: String,
+      required: true,
+      trim: true,
+      index: true,
+    },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      index: true,
+    },
+    language: {
+      type: String,
+      required: true,
+      trim: true,
+      index: true,
+    },
+    fileUrl: {
       type: String,
       required: true,
       trim: true,
     },
-    position: {
-      type: String,
-      required: true,
-      trim: true,
+    activeStatus: {
+      type: Boolean,
+      default: true,
+      index: true,
     },
-    department: {
-      type: String,
-      trim: true,
-      default: 'NSO (Pvt) Ltd.',
-    },
-    phone: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    email: {
-      type: String,
-      required: true,
-      trim: true,
-      lowercase: true,
-    },
-    imageUrl: {
-      type: String,
-      trim: true,
-      default: '',
+    displayOrder: {
+      type: Number,
+      default: 0,
     },
     approved: {
       type: Boolean,
@@ -66,29 +67,20 @@ const corporateMemberSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    category: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'CorporateCategory',
-      default: null,
-    },
-    activeStatus: {
-      type: Boolean,
-      default: true,
-      index: true,
-    },
-    displayOrder: {
-      type: Number,
-      default: 0,
-    },
     createdBy: {
       type: String,
       trim: true,
-      required: true,
+      default: '',
     },
     updatedBy: {
       type: String,
       trim: true,
-      required: true,
+      default: '',
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
     deletedAt: {
       type: Date,
@@ -105,7 +97,6 @@ const corporateMemberSchema = new mongoose.Schema(
   }
 );
 
-// Index for fetching active members (for public display)
-corporateMemberSchema.index({ activeStatus: 1, displayOrder: 1 });
+downloadSchema.index({ activeStatus: 1, category: 1, displayOrder: 1, title: 1, language: 1 });
 
-export default mongoose.model('CorporateMember', corporateMemberSchema);
+export default mongoose.model('Download', downloadSchema);

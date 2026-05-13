@@ -396,21 +396,6 @@ export default function NewsManagementPage() {
         icon={FileText}
       />
 
-      <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6">
-        <div className="flex items-start space-x-3">
-          <FileText className="h-6 w-6 text-blue-600 flex-shrink-0 mt-1" />
-          <div>
-            <h3 className="text-base font-bold text-secondary mb-2">Your Permissions</h3>
-            <div className="space-y-1 text-sm text-blue-800">
-              <p>View News: <strong>Yes</strong></p>
-              <p>Create News: <strong>{canCreate ? 'Yes' : 'No'}</strong></p>
-              <p>Edit News: <strong>{canEdit ? 'Yes' : 'No'}</strong></p>
-              <p>Delete News: <strong>{canDelete ? 'Yes' : 'No'}</strong></p>
-              <p>Approve News: <strong>{canApprove ? 'Yes' : 'No'}</strong></p>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">

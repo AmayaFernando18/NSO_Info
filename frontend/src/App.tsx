@@ -7,7 +7,7 @@ import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
 import NewsPage from "./pages/NewsPage";
 import CareersPage from "./pages/CareersPage";
-import DownloadSpecificationsPage from "./pages/DownloadSpecificationsPage";
+import DownloadCentrePage from "./pages/DownloadCentrePage";
 import CorporateProfilePage from "./pages/CorporateProfilePage";
 import AdminOverviewPage from "./pages/admin/AdminOverviewPage";
 import UsersManagementPage from "./pages/admin/UsersManagementPage";
@@ -20,6 +20,7 @@ import GalleryPage from "./pages/GalleryPage";
 import AlbumDetailPage from "./pages/AlbumDetailPage";
 import GalleryManagementPage from "./pages/admin/GalleryManagementPage";
 import AdminQuickAccessPage from "./pages/admin/AdminQuickAccessPage";
+import DownloadsManagementPage from "./pages/admin/DownloadsManagementPage";
 import { canAccessAdmin } from "./utils/rbac";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -106,7 +107,8 @@ function AppRoutes() {
         <Route path="/careers" element={<CareersPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
         <Route path="/gallery/:id" element={<AlbumDetailPage />} />
-        <Route path="/specifications" element={<DownloadSpecificationsPage />} />
+        <Route path="/downloads" element={<DownloadCentrePage />} />
+        <Route path="/specifications" element={<Navigate to="/downloads" replace />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/calendar" element={<EventsPage />} />
         <Route path="/dispatch" element={<HomePage />} />
@@ -118,6 +120,7 @@ function AppRoutes() {
         <Route path="hero" element={<HeroManagementPage />} />
         <Route path="events" element={<EventsManagementPage />} />
         <Route path="corporate" element={<CorporateManagementPage />} />
+        <Route path="downloads" element={<DownloadsManagementPage />} />
         <Route path="quick-access" element={<AdminQuickAccessPage />} />
         <Route path="gallery" element={<GalleryManagementPage />} />
       </Route>

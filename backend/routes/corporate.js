@@ -6,12 +6,14 @@ import validateRequest from '../middleware/validateRequest.js';
 import { authenticate, requireAction } from '../middleware/rbacMiddleware.js';
 import { RBAC_FUNCTION } from '../config/rbacFunctions.js';
 import {
+  approveMember,
   createMember,
   deleteMember,
   getAdminMembers,
   getPublicMembers,
   permanentlyDelete,
   reorderMembers,
+  rejectMember,
   restoreMember,
   updateMember,
 } from '../controllers/corporate.controller.js';
@@ -259,7 +261,7 @@ router.patch(
 router.put(
   '/admin/:id',
   authenticate,
-  requireAction('create', FUNCTION_NAME),
+  requireAction('edit', FUNCTION_NAME),
   validateRequest(updateMemberSchema),
   updateMember
 );
@@ -338,5 +340,17 @@ router.delete(
   requireAction('delete', FUNCTION_NAME),
   permanentlyDelete
 );
+
+const rejectSchema = z.object({
+  body: z.object({
+    rejectionReason: z.string().optional(),
+  }),
+  params: z.object({ id: z.string().min(1) }),
+  query: z.object({}),
+});
+
+// Approve and reject endpoints (require Approve authority)
+router.patch('/:id/approve', authenticate, requireAction('approve', FUNCTION_NAME), approveMember);
+router.patch('/:id/reject', authenticate, requireAction('approve', FUNCTION_NAME), validateRequest(rejectSchema), rejectMember);
 
 export default router;

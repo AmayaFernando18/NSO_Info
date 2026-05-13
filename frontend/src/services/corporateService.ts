@@ -96,6 +96,16 @@ export const updateCorporateMember = async (
   return data.data
 }
 
+export const approveCorporateMember = async (id: string): Promise<CorporateMemberDto> => {
+  const { data } = await api.patch<ItemCorporateResponse>(`/corporate/${id}/approve`)
+  return data.data
+}
+
+export const rejectCorporateMember = async (id: string, rejectionReason: string): Promise<CorporateMemberDto> => {
+  const { data } = await api.patch<ItemCorporateResponse>(`/corporate/${id}/reject`, { rejectionReason })
+  return data.data
+}
+
 export const removeCorporateMember = async (id: string): Promise<void> => {
   await api.delete(`/corporate/admin/${id}`)
 }

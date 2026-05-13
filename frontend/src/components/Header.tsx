@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
-import { Menu, X, User, LogOut, Bell, Search, Settings } from 'lucide-react';
+import { Menu, X, User, LogOut, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { canAccessAdmin } from '../utils/rbac';
 
@@ -11,9 +11,9 @@ export default function Header() {
   return (
     <header className="bg-surface border-b border-border sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-3 group">
+        <div className="flex justify-between items-center h-16 gap-4">
+          {/* Logo - Left */}
+          <Link to="/" className="flex items-center space-x-3 group flex-shrink-0">
             <img 
               src="/images/nso-logo.jpeg" 
               alt="NSO Logo" 
@@ -22,57 +22,66 @@ export default function Header() {
             <h1 className="text-xl font-bold text-secondary">NSO Info</h1>
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6">
-            <Link to="/" className="text-base text-secondary hover:text-primary transition-colors font-medium">
+          {/* Desktop Navigation - Center */}
+          <nav className="hidden md:flex items-center space-x-2 flex-1 justify-center">
+            <Link 
+              to="/" 
+              className="px-4 py-2 text-base text-secondary font-medium rounded-lg hover:bg-primary/10 transition-all duration-200"
+            >
               Home
             </Link>
             
-            {/* <Link to="/news" className="text-base text-secondary hover:text-primary transition-colors font-medium">
-              News
-            </Link> */}
-            
-            <Link to="/careers" className="text-base text-secondary hover:text-primary transition-colors font-medium">
+            <Link 
+              to="/careers" 
+              className="px-4 py-2 text-base text-secondary font-medium rounded-lg hover:bg-primary/10 transition-all duration-200"
+            >
               Careers
             </Link>
-            <Link to="/gallery" className="text-base text-secondary hover:text-primary transition-colors font-medium">
+            <Link 
+              to="/gallery" 
+              className="px-4 py-2 text-base text-secondary font-medium rounded-lg hover:bg-primary/10 transition-all duration-200"
+            >
               Gallery
             </Link>
-            <Link to="/corporate-profile" className="text-base text-secondary hover:text-primary transition-colors font-medium">
+            <Link 
+              to="/downloads" 
+              className="px-4 py-2 text-base text-secondary font-medium rounded-lg hover:bg-primary/10 transition-all duration-200"
+            >
+              Downloads
+            </Link>
+            <Link 
+              to="/corporate-profile" 
+              className="px-4 py-2 text-base text-secondary font-medium rounded-lg hover:bg-primary/10 transition-all duration-200"
+            >
               Corporate Profile
             </Link>
             {canAccessAdmin(user) && (
-              <Link to="/admin" className="text-base text-secondary hover:text-primary transition-colors font-medium flex items-center gap-1">
+              <Link 
+                to="/admin" 
+                className="px-4 py-2 text-base text-secondary font-medium rounded-lg hover:bg-primary/10 transition-all duration-200 flex items-center gap-1"
+              >
                 <Settings className="h-4 w-4" />
                 Admin
               </Link>
             )}
           </nav>
 
-          {/* User Actions */}
-          <div className="flex items-center space-x-4">
-            <button className="p-2 hover:bg-muted rounded-lg transition-colors hidden md:block">
-              <Search className="h-5 w-5 text-secondary" />
-            </button>
-            <button className="p-2 hover:bg-muted rounded-lg transition-colors relative hidden md:block">
-              <Bell className="h-5 w-5 text-secondary" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full animate-pulse"></span>
-            </button>
-            
+          {/* User Actions - Right */}
+          <div className="flex items-center space-x-3 flex-shrink-0">
             {user && (
-              <div className="hidden md:flex items-center space-x-3">
-                <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-primary/10 to-accent/10 rounded-lg border border-primary/20">
-                  <User className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium text-secondary">{user.name}</span>
-                </div>
-                <button
-                  onClick={logout}
-                  className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
-                  title="Logout"
-                >
-                  <LogOut className="h-5 w-5" />
-                </button>
+              <div className="hidden md:flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-primary/10 to-accent/10 rounded-lg border border-primary/20">
+                <User className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-secondary">{user.name}</span>
               </div>
+            )}
+            {user && (
+              <button
+                onClick={logout}
+                className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors hidden md:block"
+                title="Logout"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
             )}
 
             <button
@@ -124,11 +133,11 @@ export default function Header() {
                 Gallery
               </Link>
               <Link
-                to="/specifications"
+                to="/downloads"
                 className="px-4 py-2 hover:bg-muted rounded-lg transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Specifications
+                Downloads
               </Link>
               {canAccessAdmin(user) && (
                 <Link

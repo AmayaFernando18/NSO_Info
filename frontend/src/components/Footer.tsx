@@ -85,7 +85,7 @@ export default function Footer() {
                 <a href="#" className="hover:text-yellow-300 transition-colors hover:translate-x-1 inline-block">→ Employee Services</a>
               </li>
               <li>
-                <Link to="/specifications" className="hover:text-yellow-300 transition-colors hover:translate-x-1 inline-block">→ Technical Documents</Link>
+                <Link to="/downloads" className="hover:text-yellow-300 transition-colors hover:translate-x-1 inline-block">→ Downloads Centre</Link>
               </li>
               <li>
                 <a href="#" className="hover:text-yellow-300 transition-colors hover:translate-x-1 inline-block">→ IT Support</a>

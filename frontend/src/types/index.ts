@@ -46,10 +46,39 @@ export interface CorporateMemberDto {
   categoryId?: string;
   activeStatus?: boolean;
   displayOrder?: number;
+  approved?: boolean;
+  approvedBy?: string;
+  approvedAt?: string | null;
+  rejected?: boolean;
+  rejectedBy?: string;
+  rejectionReason?: string;
+  rejectedAt?: string | null;
   createdBy?: string;
   updatedBy?: string;
   deletedAt?: string | null;
   deletedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface DownloadItemDto {
+  id?: string;
+  _id?: string;
+  category: string;
+  title: string;
+  language: string;
+  fileUrl: string;
+  activeStatus?: boolean;
+  displayOrder?: number;
+  approved?: boolean;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejected?: boolean;
+  rejectedBy?: string;
+  rejectionReason?: string;
+  rejectedAt?: string;
+  createdBy?: string;
+  updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
 }

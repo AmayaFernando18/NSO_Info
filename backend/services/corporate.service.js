@@ -72,3 +72,35 @@ export const reorderCorporateMembers = async (orderedIds) => {
 
   return listAdminMembers();
 };
+
+export const approveMemberById = async (id, approvedBy) =>
+  CorporateMember.findByIdAndUpdate(
+    id,
+    {
+      approved: true,
+      approvedBy,
+      approvedAt: new Date(),
+      rejected: false,
+      rejectedBy: '',
+      rejectionReason: '',
+      rejectedAt: null,
+      updatedBy: approvedBy,
+    },
+    { new: true, runValidators: true }
+  );
+
+export const rejectMemberById = async (id, rejectedBy, rejectionReason = '') =>
+  CorporateMember.findByIdAndUpdate(
+    id,
+    {
+      approved: false,
+      approvedBy: '',
+      approvedAt: null,
+      rejected: true,
+      rejectedBy,
+      rejectionReason,
+      rejectedAt: new Date(),
+      updatedBy: rejectedBy,
+    },
+    { new: true, runValidators: true }
+  );

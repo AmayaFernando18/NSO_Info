@@ -334,30 +334,6 @@ export default function HeroManagementPage() {
         </div>
       )}
 
-      {/* Permissions Card */}
-      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200/50 rounded-xl p-5 shadow-sm">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-purple-100 rounded-lg">
-            <Image className="h-5 w-5 text-purple-600" />
-          </div>
-          <h3 className="text-base font-semibold text-purple-900">Your Permissions</h3>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {[
-            { label: 'View', allowed: true },
-            { label: 'Create', allowed: canCreate },
-            { label: 'Edit & Reorder', allowed: canEdit },
-            { label: 'Delete', allowed: canDelete },
-            { label: 'Approve', allowed: canApprove },
-          ].map((perm) => (
-            <div key={perm.label} className="flex items-center gap-2 text-sm">
-              <span className={`w-2 h-2 rounded-full ${perm.allowed ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-              <span className={perm.allowed ? 'text-purple-800' : 'text-gray-500'}>{perm.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Add Hero Slide Form */}

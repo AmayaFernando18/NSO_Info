@@ -1,5 +1,5 @@
 import { useUser } from '../../context/UserContext'
-import { ShieldCheck, Newspaper, Image, Users, ArrowRight, Sparkles, Calendar } from 'lucide-react'
+import { ShieldCheck, Newspaper, Image, Users, ArrowRight, Sparkles, Calendar, Download } from 'lucide-react'
 import { canPerformAction } from '../../utils/rbac'
 import { RBAC_FUNCTION } from '../../constants/rbac'
 import { Link } from 'react-router-dom'
@@ -87,6 +87,17 @@ export default function AdminOverviewPage() {
       iconBg: 'bg-cyan-50',
       iconColor: 'text-cyan-600',
       canAccess: canPerformAction(user, RBAC_FUNCTION.CORPORATE, 'view'),
+    },
+    {
+      title: 'Downloads',
+      description: 'Manage downloadable PDFs by category, title, and language',
+      icon: Download,
+      to: '/admin/downloads',
+      gradient: 'from-fuchsia-400 via-pink-500 to-rose-600',
+      shadowColor: 'shadow-pink-500/20',
+      iconBg: 'bg-pink-50',
+      iconColor: 'text-pink-600',
+      canAccess: canPerformAction(user, RBAC_FUNCTION.DOWNLOADS, 'view'),
     },
     {
       title: 'User Access Control',
